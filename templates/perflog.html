@@ -1,0 +1,63 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['corechart', 'scatter']});
+      google.charts.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+      
+      var data = new google.visualization.DataTable();
+        data.addColumn('date', 'Date');
+        data.addColumn('number', 'Duration');
+        data.addColumn('number', 'Size');
+      
+       data.addRows([
+          {{range $i, $e := .}}{{if gt $i 1}},{{end}}{{if gt $e.CheckTime.Unix 0}}[ new Date({{printf `%d000` $e.CheckTime.Unix}}), {{$e.Duration}}, {{$e.Size}}]{{end}}{{end}}
+        ]);
+
+        var options = {
+          title: 'Feed Request Duration and Size',
+          series: {
+            0: {targetAxisIndex: 0},
+            1: {targetAxisIndex: 1}
+          },
+		  vAxes: {
+            // Adds titles to each axis.
+            0: {title: 'Request Duration (ms)' },
+            1: {title: 'Response Size (bytes)', minValue: '0'}
+          },
+          hAxis: {
+          	title: 'Request Time',
+            format: 'M/d/yy HH:mm',
+            viewWindow: {
+              min: new Date(2017, 7, 4, 0, 0),
+              max: new Date(2017, 7, 4, 23, 59)
+            },
+            gridlines: {
+              count: -1,
+              units: {
+                days: {format: ['MMM dd']},
+                hours: {format: ['HH:mm', 'ha']},
+              }
+            },
+          },
+        };
+
+        var date_formatter = new google.visualization.DateFormat({ pattern: "M/d/yy HH:mm" }); 
+        date_formatter.format(data, 0);
+
+        var chart = new google.visualization.ScatterChart(document.getElementById('chart_div'));
+
+        chart.draw(data, options);
+      }
+    </script>
+</head>
+
+<body>
+    <div id="chart_div" style="height: 500px;"></div>  
+    
+</body>
+
+</html>
