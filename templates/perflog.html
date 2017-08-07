@@ -14,7 +14,7 @@
         data.addColumn('number', 'Size');
       
        data.addRows([
-          {{range $i, $e := .}}{{if gt $i 1}},{{end}}{{if gt $e.CheckTime.Unix 0}}[ new Date({{printf `%d000` $e.CheckTime.Unix}}), {{$e.Duration}}, {{$e.Size}}]{{end}}{{end}}
+          {{range $i, $e := .}}{{if gt $i 0}},{{end}}[ new Date({{printf `%d000` $e.CheckTime.Unix}}), {{$e.Duration}}, {{$e.Size}}]{{end}}
         ]);
 
         var options = {
@@ -32,8 +32,8 @@
           	title: 'Request Time',
             format: 'M/d/yy HH:mm',
             viewWindow: {
-              min: new Date(2017, 7, 4, 0, 0),
-              max: new Date(2017, 7, 4, 23, 59)
+              min: new Date(2017, 7, 7, 0, 0),
+              max: new Date(2017, 7, 7, 23, 59)
             },
             gridlines: {
               count: -1,

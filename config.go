@@ -87,10 +87,14 @@ func (c *Configuration) initialize() {
 func (e *Endpoint) scheduleNextCheck() {
 	if e.lastCheckTime.Unix() == 0 {
 		e.lastCheckTime = time.Now()
-		e.nextCheckTime = e.lastCheckTime.Add(1 * time.Minute)
+		e.nextCheckTime = e.lastCheckTime.Add(time.Duration(e.CheckIntervalMin) * time.Minute)
 	} else {
 		e.lastCheckTime = e.nextCheckTime
-		e.nextCheckTime = e.lastCheckTime.Add(1 * time.Minute)
+		e.nextCheckTime = e.lastCheckTime.Add(time.Duration(e.CheckIntervalMin) * time.Minute)
+		// Make sure we are not getting backed up.
+		if e.nextCheckTime.Before(time.Now()) {
+			e.nextCheckTime = time.Now()
+		}
 	}
 }
 
