@@ -14,7 +14,7 @@
         data.addColumn('number', 'Size');
       
        data.addRows([
-          {{range $i, $e := .}}{{if gt $i 0}},{{end}}[ new Date({{printf `%d000` $e.CheckTime.Unix}}), {{$e.Duration}}, {{$e.Size}}]{{end}}
+          {{.graphData}}
         ]);
 
         var options = {

@@ -3,11 +3,13 @@ package web
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/ericdaugherty/feedmonitor/db"
@@ -20,18 +22,20 @@ var log *logrus.Entry
 var server *http.Server
 
 var tmpl *template.Template
+var templates map[string]*template.Template
 
 // StartWebserver initializes the webserver and starts the listener.
 func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entry, port int) error {
 
 	log = logger.WithField("module", "web")
 
-	tmpl = template.Must(template.ParseFiles("templates/perflog.html"))
+	initTemplates()
 
 	log.Debug("Starting Webserver...")
 
 	http.HandleFunc("/perf/", perfHome)
 	http.HandleFunc("/perf/url/", perfLog)
+	http.HandleFunc("/favicon.ico", notFoundHandler)
 	http.HandleFunc("/", home)
 
 	server = &http.Server{
@@ -65,26 +69,38 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	return nil
 }
 
+func initTemplates() {
+	if templates == nil {
+		templates = make(map[string]*template.Template)
+	}
+
+	templatesDir := path.Join("templates", "*.tmpl")
+
+	templatePaths, err := filepath.Glob(templatesDir)
+	if err != nil {
+		log.Fatal("Error initializing HTML Templates", err)
+	}
+
+	log.Debugf("Loading %d templates from %v", len(templatePaths), templatesDir)
+
+	for _, filePath := range templatePaths {
+		name := strings.TrimSuffix(path.Base(filePath), ".tmpl")
+		templates[name] = template.Must(template.ParseFiles(filePath))
+	}
+}
+
 func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "<h1>Hello World</h1>")
-	fmt.Fprint(w, "<br/>")
-	fmt.Fprint(w, "<a href=\"/perf/http:%2F%2Fwww.pgatour.com%2Ftest.json\">Perf TOUR</a>")
+	renderTemplate(w, r, "home", template.HTML("<a href=\"/perf/http:%2F%2Fwww.pgatour.com%2Ftest.json\">Perf TOUR</a>"))
 }
 
 func perfHome(w http.ResponseWriter, r *http.Request) {
 	names, err := db.GetPerformanceBucketNames()
 	if err != nil {
-		fmt.Fprintf(w, "Error getting bucket names. %v", err.Error())
+		errorHandler(w, r, fmt.Sprintf("Error getting bucket names. %v", err.Error()))
 		return
 	}
 
-	fmt.Fprint(w, "<html><body>Performance Logs:<br/>")
-
-	for _, v := range names {
-		fmt.Fprintf(w, `<a href="url/%v">%v</a><br/>`, v, v)
-	}
-
-	fmt.Fprint(w, "</body></html>")
+	renderTemplate(w, r, "perfHome", names)
 }
 
 func perfLog(w http.ResponseWriter, r *http.Request) {
@@ -106,17 +122,10 @@ func perfLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// body := ""
+	templateData := make(map[string]interface{})
+	templateData["graphData"] = template.JS(buildGraphMapString(perfRecs))
 
-	// body += fmt.Sprintf("Perf Log, URL: %v<br/>", url)
-	// for _, v := range perfRecs {
-	// 	body += fmt.Sprintf("Time: %v, Duration %d ms, Size: %d bytes.<br/>", v.CheckTime, v.Duration, v.Size)
-	// }
-
-	err = tmpl.Execute(w, perfRecs)
-	if err != nil {
-		log.Errorln("Error executing Template:", err)
-	}
+	renderTemplate(w, r, "perflog", templateData)
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +133,35 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, errorDesc string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintf(w, "Server Error: %v", errorDesc)
+}
+
+func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
+
+	tmpl, ok := templates[name]
+	if !ok {
+		errorHandler(w, r, fmt.Sprintf("No template found for name: %s", name))
+	}
+
+	log.Debugf("Exec templ name %s", tmpl.Name())
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := tmpl.ExecuteTemplate(w, name+".tmpl", data)
+	if err != nil {
+		errorHandler(w, r, fmt.Sprintf("Unable to Excecute Template %v. Error: %v", name, err))
+	}
+}
+
+func buildGraphMapString(perfRecs []db.PerformanceEntryResult) (result string) {
+
+	delim := ""
+	for i, v := range perfRecs {
+		if i > 0 {
+			delim = ", "
+		}
+		result += fmt.Sprintf("%v[new Date(%d000), %d, %d]", delim, v.CheckTime.Unix(), v.Duration, v.Size)
+	}
+	return
 }
