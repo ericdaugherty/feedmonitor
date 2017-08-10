@@ -16,8 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: Change to html/template - but need to esacpe javascript code generation using text/template or other mechanism.
-
 var log *logrus.Entry
 var server *http.Server
 
