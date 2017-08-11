@@ -32,8 +32,8 @@
           	title: 'Request Time',
             format: 'M/d/yy HH:mm',
             viewWindow: {
-              min: new Date(2017, 7, 7, 0, 0),
-              max: new Date(2017, 7, 7, 23, 59)
+              min: {{.StartDate}},
+              max: {{.EndDate}} 
             },
             gridlines: {
               count: -1,
@@ -56,6 +56,11 @@
 </head>
 
 <body>
+  <div>
+    URL: {{.FeedURL}}<br/>
+    Date: {{.Date}}<br/>
+  </div>
+
     <div id="chart_div" style="height: 500px;"></div>  
     
 </body>

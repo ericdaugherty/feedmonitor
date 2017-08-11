@@ -113,3 +113,43 @@ func GetPerformanceRecords(url string) (entries []PerformanceEntryResult, err er
 
 	return
 }
+
+// GetPerformanceRecordsForDate returns all the performance records for the provided URL and date.
+func GetPerformanceRecordsForDate(url string, date time.Time) ([]PerformanceEntryResult, error) {
+
+	entries := make([]PerformanceEntryResult, 0, 100)
+
+	err := db.View(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte(bucketPerformanceLog))
+
+		fb := b.Bucket([]byte(url))
+
+		if fb == nil {
+			entries = nil
+			return nil
+		}
+
+		c := fb.Cursor()
+
+		year, month, day := date.Date()
+		d := time.Date(year, month, day, 0, 0, 0, 0, date.Location())
+		min := []byte(d.Format(time.RFC3339))
+		max := []byte(d.Add(24 * time.Hour).Format(time.RFC3339))
+
+		for k, v := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, v = c.Next() {
+			var entry PerformanceEntry
+			err := json.NewDecoder(bytes.NewReader(v)).Decode(&entry)
+			if err != nil {
+				log.Errorf("Error decoding JSON from record: %v", err.Error())
+				return err
+			}
+			time, _ := time.Parse(time.RFC3339, string(k))
+			res := PerformanceEntryResult{CheckTime: time, PerformanceEntry: entry}
+			entries = append(entries, res)
+		}
+		return nil
+	})
+
+	return entries, err
+}

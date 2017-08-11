@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -32,7 +33,7 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	log.Debug("Starting Webserver...")
 
 	http.HandleFunc("/perf/", perfHome)
-	http.HandleFunc("/perf/url/", perfLog)
+	http.HandleFunc("/perf/feed", perfLog)
 	http.HandleFunc("/favicon.ico", notFoundHandler)
 	http.HandleFunc("/", home)
 
@@ -92,42 +93,80 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func perfHome(w http.ResponseWriter, r *http.Request) {
+
 	names, err := db.GetPerformanceBucketNames()
 	if err != nil {
 		errorHandler(w, r, fmt.Sprintf("Error getting bucket names. %v", err.Error()))
 		return
 	}
 
-	renderTemplate(w, r, "perfHome", names)
+	args := make([]interface{}, len(names), len(names))
+	for i, v := range names {
+		values := url.Values{}
+		values.Set("feed", v)
+		values.Set("date", "today")
+
+		args[i] = struct {
+			Name string
+			URL  template.URL
+		}{
+			v,
+			template.URL("feed?" + values.Encode()),
+		}
+	}
+
+	renderTemplate(w, r, "perfHome", args)
 }
 
 func perfLog(w http.ResponseWriter, r *http.Request) {
 
-	url := strings.TrimPrefix(r.RequestURI, "/perf/url/")
+	requestValues := r.URL.Query()
+	dateArg := requestValues.Get("date")
+	url := requestValues.Get("feed")
 
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		url = strings.Replace(url, ":/", "://", 1)
+	var date time.Time
+	if strings.EqualFold(strings.TrimSpace(dateArg), "today") {
+		date = time.Now()
+	} else {
+		var err error
+		date, err = time.Parse("2006-01-02", dateArg)
+		if err != nil {
+			badRequestHandler(w, r)
+			return
+		}
 	}
 
-	perfRecs, err := db.GetPerformanceRecords(url)
+	perfRecs, err := db.GetPerformanceRecordsForDate(url, date)
 	if err != nil {
 		errorHandler(w, r, err.Error())
 		return
 	}
 
-	if perfRecs == nil || len(perfRecs) == 0 {
+	if perfRecs == nil {
 		notFoundHandler(w, r)
 		return
 	}
 
+	year, month, day := date.Date()
+	d := time.Date(year, month, day, 0, 0, 0, 0, date.Location())
+	tom := d.Add(24 * time.Hour)
+
 	templateData := make(map[string]interface{})
+	templateData["FeedURL"] = url
+	templateData["Date"] = date.Format("Mon Jan _2 2006")
 	templateData["graphData"] = template.JS(buildGraphMapString(perfRecs))
+	templateData["StartDate"] = template.JS(fmt.Sprintf("new Date(%d, %d, %d, 0, 0)", d.Year(), d.Month()-1, d.Day()))
+	templateData["EndDate"] = template.JS(fmt.Sprintf("new Date(%d, %d, %d, 0, 0)", tom.Year(), tom.Month()-1, tom.Day()))
 
 	renderTemplate(w, r, "perflog", templateData)
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
+}
+
+func badRequestHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusBadRequest)
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request, errorDesc string) {
@@ -143,7 +182,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 		errorHandler(w, r, fmt.Sprintf("No template found for name: %s", name))
 	}
 
-	log.Debugf("Exec templ name %s", tmpl.Name())
+	log.Debugf("Rendering template name %s", tmpl.Name())
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err := tmpl.ExecuteTemplate(w, name+".tmpl", data)
