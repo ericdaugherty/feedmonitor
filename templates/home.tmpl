@@ -4,6 +4,10 @@
 </head>
 <body>
 <h1>Feed Monitor Home</h1>
-{{.}}
+<h3>Applications:</h3>
+<p>
+<ul>
+{{ range .Applications }}<li><a href="./app/{{.Key}}/">{{.Name}}</a></li>{{end}}
+</ul>
 </body>
 </html>

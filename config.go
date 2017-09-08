@@ -19,20 +19,28 @@ type Configuration struct {
 
 // Application defines a high level App, or set of feeds, to test
 type Application struct {
+	Key       string
 	Name      string
 	Endpoints []*Endpoint
 }
 
 // Endpoint defines an endpoint (which can be dynamic) to check.
 type Endpoint struct {
+	Key              string
 	Name             string
 	URL              string
 	Method           string
 	RequestBody      string
 	Dynamic          bool
 	CheckIntervalMin int
+	Validators       []Validator
 	lastCheckTime    time.Time
 	nextCheckTime    time.Time
+}
+
+// Validator defines the interface that feed result validitors need to implement.
+type Validator interface {
+	validate(*Endpoint, *EndpointResult, map[string]interface{}) (bool, *ValidationResult)
 }
 
 // EndpointResult contains the results from checking an Endpoint.
@@ -42,6 +50,7 @@ type EndpointResult struct {
 	CheckTime time.Time
 	Duration  time.Duration
 	Size      int64
+	Status    int
 	Body      []byte
 }
 
@@ -50,18 +59,17 @@ type ValidationResult struct {
 	EndpointResult *EndpointResult
 	Name           string
 	Valid          bool
-	Data           interface{}
 	Errors         []string
 }
 
 // NewStaticEndpoint initializes a new StaticEndpoint using the specified values and defaults.
-func NewStaticEndpoint(name string, url string, checkIntervalMin int) Endpoint {
-	return Endpoint{Name: name, URL: url, Method: "GET", Dynamic: false, CheckIntervalMin: checkIntervalMin, lastCheckTime: time.Unix(0, 0), nextCheckTime: time.Now()}
+func NewStaticEndpoint(key string, name string, url string, checkIntervalMin int, validators []Validator) Endpoint {
+	return Endpoint{Key: key, Name: name, URL: url, Method: "GET", Dynamic: false, CheckIntervalMin: checkIntervalMin, Validators: validators, lastCheckTime: time.Unix(0, 0), nextCheckTime: time.Now()}
 }
 
 // NewDynamicEndpoint initializes a new StaticEndpoint using the specified values and defaults.
-func NewDynamicEndpoint(name string, url string, checkIntervalMin int) Endpoint {
-	return Endpoint{Name: name, URL: url, Method: "GET", Dynamic: true, CheckIntervalMin: checkIntervalMin, lastCheckTime: time.Unix(0, 0), nextCheckTime: time.Now()}
+func NewDynamicEndpoint(key string, name string, url string, checkIntervalMin int, validators []Validator) Endpoint {
+	return Endpoint{Key: key, Name: name, URL: url, Method: "GET", Dynamic: true, CheckIntervalMin: checkIntervalMin, Validators: validators, lastCheckTime: time.Unix(0, 0), nextCheckTime: time.Now()}
 }
 
 func (c *Configuration) initialize() {
@@ -82,6 +90,24 @@ func (c *Configuration) initialize() {
 	if options.LogLevel != "" {
 		c.LogLevel = options.LogLevel
 	}
+}
+
+func (c *Configuration) getApplication(key string) *Application {
+	for _, v := range configuration.Applications {
+		if strings.EqualFold(v.Key, key) {
+			return v
+		}
+	}
+	return nil
+}
+
+func (a *Application) getEndpoint(key string) *Endpoint {
+	for _, v := range a.Endpoints {
+		if strings.EqualFold(v.Key, key) {
+			return v
+		}
+	}
+	return nil
 }
 
 func (e *Endpoint) scheduleNextCheck() {
@@ -122,6 +148,11 @@ func (e *Endpoint) parseURLs(data interface{}) ([]string, error) {
 		templateResult = templateResult[:(len(templateResult) - 3)]
 	}
 
+	if len(strings.TrimSpace(templateResult)) == 0 {
+		log.Warnf("Dynamic Endpoint %s did not produce any URLs to query.", e.URL)
+		return nil, nil
+	}
+
 	urls := strings.Split(templateResult, urlSeparator)
 	for _, v := range urls {
 		log.Infof("Parsed Dynamic URL: %v", v)
@@ -130,11 +161,14 @@ func (e *Endpoint) parseURLs(data interface{}) ([]string, error) {
 	return urls, nil
 }
 
-var tourse1 = NewStaticEndpoint("Tours", "http://static.pgatour.com/mobile/v2/toursV2.json", 1)
-var tourse2 = NewStaticEndpoint("Config", "http://static.pgatour.com/mobile/v2/configV2.json", 1)
-var tourse3 = NewStaticEndpoint("MainTour", "http://www.pgatour.com/data/de/v2/2017/r/tournament.json", 1)
-var tourse4 = NewStaticEndpoint("MainTourAllPlayers", "http://www.pgatour.com/data/de/v2/2017/r/all-players.json", 1)
+var vSizeStatus = &ValidateSizeStatus{ValidStatusCodes: []int{200}, MinimumSize: 100, MaximumSize: 1000000}
+var vJSON = &ValidateJSON{}
 
-var tourde1 = NewDynamicEndpoint("broadcast", "{{range .MainTour.upcoming_tournaments}}http://www.pgatour.com/data/de/v2/2017/r/{{.id}}/broadcast.json|||{{end}}", 1)
+var tourse1 = NewStaticEndpoint("tours", "Tours", "http://static.pgatour.com/mobile/v2/toursV2.json", 1, []Validator{vSizeStatus, vJSON})
+var tourse2 = NewStaticEndpoint("config", "Config", "http://static.pgatour.com/mobile/v2/configV2.json", 1, []Validator{vSizeStatus, vJSON})
+var tourse3 = NewStaticEndpoint("maintour", "MainTour", "http://www.pgatour.com/data/de/v2/2017/r/tournament.json", 1, []Validator{vSizeStatus, vJSON})
+var tourse4 = NewStaticEndpoint("maintourap", "MainTourAllPlayers", "http://www.pgatour.com/data/de/v2/2017/r/all-players.json", 1, []Validator{vSizeStatus, vJSON})
 
-var tourApp = Application{"PGA TOUR", []*Endpoint{&tourse1, &tourse2, &tourse3, &tourse4, &tourde1}}
+var tourde1 = NewDynamicEndpoint("broadcast", "Broadcast", "{{range .MainTour.upcoming_tournaments}}http://www.pgatour.com/data/de/v2/2017/r/{{.id}}/broadcast.json|||{{end}}", 1, []Validator{vSizeStatus, vJSON})
+
+var tourApp = Application{"PGAT", "PGA TOUR", []*Endpoint{&tourse1, &tourse2, &tourse3, &tourse4, &tourde1}}

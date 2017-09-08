@@ -50,25 +50,30 @@ func fetchEndpoint(se *Endpoint, url string) (interface{}, error) {
 		}
 	}
 
-	log.Debugf("Fetch complete with status: %v", resp.Status)
-	// TODO Check HTTP STATUS
-
+	c.Status = resp.StatusCode
 	c.Size = resp.ContentLength
 	if c.Size == -1 {
 		log.Debug("No ContentLength set, defaulting to body string length.")
 		c.Size = int64(len(c.Body))
 	}
 
-	log.Infof("Fetched URL %v in %v and contained %d bytes.", url, c.Duration, c.Size)
+	log.Infof("Fetched URL %v in %v with status %d and %d bytes.", url, c.Duration, c.Status, c.Size)
 	configuration.PerfLogChannel <- c
 
-	jsonValidator := &JSON{}
-	valRes := jsonValidator.validate(se, c)
-	if valRes.Valid {
-		log.Debug("JSON is valid.")
-	} else {
-		log.Debugf("JSON is INVALID! Issue: %v", valRes.Errors[0])
-	}
+	data := make(map[string]interface{})
+	vresults := []*ValidationResult{}
 
-	return valRes.Data, nil
+	for _, v := range se.Validators {
+		cont, res := v.validate(se, c, data)
+		vresults = append(vresults, res)
+		if !res.Valid {
+			log.Infof("Validation Failed for %s validator. Errors: %v", res.Name, res.Errors)
+		}
+		if !cont {
+			break
+		}
+
+	}
+	webLog.Debugf("Data nil? %v", data["data"] == nil)
+	return data["data"], nil
 }

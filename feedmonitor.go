@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ericdaugherty/feedmonitor/db"
-	"github.com/ericdaugherty/feedmonitor/web"
 	"github.com/jessevdk/go-flags"
 	"github.com/sirupsen/logrus"
 )
@@ -45,7 +43,7 @@ func main() {
 
 	log.Info("FeedMonitor Starting...")
 
-	err := db.StartDatabase("feedmon.db", log)
+	err := StartDatabase("feedmon.db", log)
 	if err != nil {
 		log.Fatalf("Unable to launch FeedMonitor.  Error initializing the database. %v", err.Error())
 	}
@@ -64,7 +62,7 @@ func main() {
 		cancel()
 	}()
 
-	web.StartWebserver(ctx, &wg, log, 8080)
+	StartWebserver(ctx, &wg, log, 8080)
 
 	notificationHandler := &NotificationHandler{make(chan Notification, 100)}
 	notificationHandler.startNotificationHandler(helperContext, &wg)

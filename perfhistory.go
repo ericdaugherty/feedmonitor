@@ -4,8 +4,6 @@ import (
 	"context"
 	"sync"
 	"time"
-
-	"github.com/ericdaugherty/feedmonitor/db"
 )
 
 func startPerformanceWriter(ctx context.Context, wg *sync.WaitGroup) chan *EndpointResult {
@@ -34,24 +32,8 @@ func startPerformanceWriter(ctx context.Context, wg *sync.WaitGroup) chan *Endpo
 }
 
 func recordPerformance(e *EndpointResult) error {
-	// log := log.WithField("module", "perfwriter")
-
-	entry := db.PerformanceEntry{Duration: e.Duration.Nanoseconds() / int64(time.Millisecond), Size: e.Size}
-	err := db.WritePerformanceRecord(e.URL, e.CheckTime, entry)
+	entry := PerformanceEntry{Duration: e.Duration.Nanoseconds() / int64(time.Millisecond), Size: e.Size}
+	err := WritePerformanceRecord(e.URL, e.CheckTime, entry)
 
 	return err
-
-	// // fileName := html.EscapeString(e.URL)
-	// fileName := "test"
-
-	// f, err := os.OpenFile("./"+fileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
-	// if err != nil {
-	// 	log.Errorf("Error opening performance log for URL %v. Error: %v", e.URL, err)
-	// 	return err
-	// }
-	// defer f.Close()
-
-	// f.WriteString(time.Now().String() + "\n")
-
-	// return nil
 }

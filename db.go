@@ -1,4 +1,4 @@
-package db
+package main
 
 import (
 	"bytes"
@@ -15,12 +15,24 @@ import (
 const bucketPerformanceLog = "PerformanceLog"
 
 var db *bolt.DB
-var log *logrus.Entry
+var dbLog *logrus.Entry
+
+// PerformanceEntry represents the value of a performance log entry.
+type PerformanceEntry struct {
+	Duration int64
+	Size     int64
+}
+
+// PerformanceEntryResult represents the value of a performance log entry including the time key.
+type PerformanceEntryResult struct {
+	CheckTime time.Time
+	PerformanceEntry
+}
 
 // StartDatabase initializes the datastore
 func StartDatabase(filePath string, logrus *logrus.Entry) error {
 
-	log = logrus.WithField("module", "db")
+	dbLog = logrus.WithField("module", "db")
 
 	// Setup Database
 	var err error
@@ -41,13 +53,13 @@ func WritePerformanceRecord(url string, checkTime time.Time, e PerformanceEntry)
 
 		b, err := tx.CreateBucketIfNotExists([]byte(bucketPerformanceLog))
 		if err != nil {
-			log.Errorf("Error creating PerformanceLog bucket. %v", err.Error())
+			dbLog.Errorf("Error creating PerformanceLog bucket. %v", err.Error())
 			return err
 		}
 
 		fb, err := b.CreateBucketIfNotExists([]byte(url))
 		if err != nil {
-			log.Errorf("Error creating PerformanceLog sub-bucket: %v. %v", url, err.Error())
+			dbLog.Errorf("Error creating PerformanceLog sub-bucket: %v. %v", url, err.Error())
 			return err
 		}
 
@@ -56,7 +68,7 @@ func WritePerformanceRecord(url string, checkTime time.Time, e PerformanceEntry)
 		var buf bytes.Buffer
 		json.NewEncoder(&buf).Encode(e)
 
-		log.Debugf("Logging Performance Entry url: %v, time: %s, value: %v", url, k, buf.String())
+		dbLog.Debugf("Logging Performance Entry url: %v, time: %s, value: %v", url, k, buf.String())
 
 		return fb.Put([]byte(k), buf.Bytes())
 	})
@@ -98,7 +110,7 @@ func GetPerformanceRecords(url string) (entries []PerformanceEntryResult, err er
 			var entry PerformanceEntry
 			err = json.NewDecoder(bytes.NewReader(v)).Decode(&entry)
 			if err != nil {
-				log.Errorf("Error decoding JSON from record: %v", err.Error())
+				dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 				return nil
 			}
 			time, _ := time.Parse(time.RFC3339, string(k))
@@ -141,7 +153,7 @@ func GetPerformanceRecordsForDate(url string, date time.Time) ([]PerformanceEntr
 			var entry PerformanceEntry
 			err := json.NewDecoder(bytes.NewReader(v)).Decode(&entry)
 			if err != nil {
-				log.Errorf("Error decoding JSON from record: %v", err.Error())
+				dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 				return err
 			}
 			time, _ := time.Parse(time.RFC3339, string(k))

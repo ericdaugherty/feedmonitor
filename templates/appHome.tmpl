@@ -1,0 +1,14 @@
+<html>
+
+<head>
+</head>
+<body>
+<div><a href="../../">Home</a></div>
+<h1>{{.Name}} Home</h1>
+<h3>Endpoints:</h3>
+<p>
+<ul>
+{{ range .Endpoints }}<li><a href="./{{.Key}}/">{{.Name}} - {{.URL}}</a></li>{{end}}
+</ul>
+</body>
+</html>
