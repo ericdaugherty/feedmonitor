@@ -9,6 +9,13 @@ import (
 
 const urlSeparator = "|||"
 
+// StatusUnknown defines valid states for Endpoint Status
+const (
+	StatusUnknown = iota
+	StatusOK
+	StatusFail
+)
+
 // Configuration defines the structure of the configuration file and values.
 type Configuration struct {
 	LogLevel        string
@@ -26,17 +33,19 @@ type Application struct {
 
 // Endpoint defines an endpoint (which can be dynamic) to check.
 type Endpoint struct {
-	Key              string
-	Name             string
-	URL              string
-	Method           string
-	RequestBody      string
-	Dynamic          bool
-	CheckIntervalMin int
-	Validators       []Validator
-	CurrentURLs      []string // Most recent parsed dynamic URLs
-	lastCheckTime    time.Time
-	nextCheckTime    time.Time
+	Key               string
+	Name              string
+	URL               string
+	Method            string
+	RequestBody       string
+	Dynamic           bool
+	CheckIntervalMin  int
+	Validators        []Validator
+	CurrentURLs       []string // Most recent parsed dynamic URLs
+	CurrentStatus     int
+	CurrentValidation []*ValidationResult
+	lastCheckTime     time.Time
+	nextCheckTime     time.Time
 }
 
 // Validator defines the interface that feed result validitors need to implement.

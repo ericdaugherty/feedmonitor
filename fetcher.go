@@ -63,16 +63,26 @@ func fetchEndpoint(se *Endpoint, url string) (interface{}, error) {
 	data := make(map[string]interface{})
 	vresults := []*ValidationResult{}
 
+	valid := true
 	for _, v := range se.Validators {
 		cont, res := v.validate(se, c, data)
 		vresults = append(vresults, res)
 		if !res.Valid {
+			valid = false
 			log.Infof("Validation Failed for %s validator. Errors: %v", res.Name, res.Errors)
 		}
 		if !cont {
 			break
 		}
-
 	}
+
+	// TODO Store Validation Results
+	se.CurrentValidation = vresults
+	if valid {
+		se.CurrentStatus = StatusOK
+	} else {
+		se.CurrentStatus = StatusFail
+	}
+
 	return data["data"], nil
 }

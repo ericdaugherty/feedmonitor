@@ -13,14 +13,23 @@
   <li>
     <div><a href="{{.}}">{{.}}</a></div>
     <div>View <a href="./performance?date=today&feed={{.}}">Performance Log</a></div>
+    <div>Status: Unknown</div>
   </li>
   {{end}}
 </ul>
 {{else}}
 <div>Feed: <a href="{{.Endpoint.URL}}">{{.Endpoint.URL}}</a></div>
 <div>View <a href="./performance?date=today">Performance Log</a></div>
-<div>Status: Unknown</div>
+<div>Status: {{.Endpoint.CurrentStatus}}</div>
+<div>Validators:<ul>
+{{range .Endpoint.CurrentValidation}}
+<li>Name: {{.Name}} Valid: {{.Valid}}
+<ul>
+{{range .Errors}}<li>{{.}}</li>{{end}}
+</ul>
+</li>
 {{end}}
-
+</ul></div>
+{{end}}
 </body>
 </html>

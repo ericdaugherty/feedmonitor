@@ -8,7 +8,7 @@
 <h3>Endpoints:</h3>
 <p>
 <ul>
-{{ range .Endpoints }}<li><a href="./{{.Key}}/">{{.Name}} - {{.URL}}</a></li>{{end}}
+{{ range .Endpoints }}<li><a href="./{{.Key}}/">{{.Name}} - {{.URL}}</a> - Status: {{.CurrentStatus}}</li>{{end}}
 </ul>
 </body>
 </html>
