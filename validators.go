@@ -14,7 +14,7 @@ type ValidateSizeStatus struct {
 
 func (v *ValidateSizeStatus) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	vr := ValidationResult{EndpointResult: er, Name: "SizeStatus"}
+	res := ValidationResult{EndpointResult: er, Name: "SizeStatus"}
 
 	statusValid := false
 	for _, status := range v.ValidStatusCodes {
@@ -24,20 +24,22 @@ func (v *ValidateSizeStatus) validate(e *Endpoint, er *EndpointResult, data map[
 		}
 	}
 	if !statusValid {
-		vr.Errors = append(vr.Errors, fmt.Sprintf("Status Code %d does not match expected Status Code(s): %v", er.Status, v.ValidStatusCodes))
+		res.Errors = append(res.Errors, fmt.Sprintf("Status Code %d does not match expected Status Code(s): %v", er.Status, v.ValidStatusCodes))
 	}
 
 	sizeValid := true
 	if v.MinimumSize > 0 && er.Size < v.MinimumSize {
 		sizeValid = false
-		vr.Errors = append(vr.Errors, fmt.Sprintf("Size of body (%d) was smaller than the minimum size (%d).", er.Size, v.MinimumSize))
+		res.Errors = append(res.Errors, fmt.Sprintf("Size of body (%d) was smaller than the minimum size (%d).", er.Size, v.MinimumSize))
 	}
 	if v.MaximumSize > 0 && er.Size > v.MaximumSize {
 		sizeValid = false
-		vr.Errors = append(vr.Errors, fmt.Sprintf("Size of body (%d) was larger than the maximum size (%d).", er.Size, v.MaximumSize))
+		res.Errors = append(res.Errors, fmt.Sprintf("Size of body (%d) was larger than the maximum size (%d).", er.Size, v.MaximumSize))
 	}
 
-	return statusValid && sizeValid, &vr
+	res.Valid = statusValid && sizeValid
+
+	return res.Valid, &res
 }
 
 // ValidateJSON provides validation of JSON files.
@@ -56,8 +58,7 @@ func (j *ValidateJSON) validate(endpoint *Endpoint, response *EndpointResult, da
 	}
 
 	res.Valid = true
-	log.Debugf("Setting Data")
 	data["data"] = jsonData
 
-	return true, &res
+	return res.Valid, &res
 }

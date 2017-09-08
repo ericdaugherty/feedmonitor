@@ -169,6 +169,6 @@ var tourse2 = NewStaticEndpoint("config", "Config", "http://static.pgatour.com/m
 var tourse3 = NewStaticEndpoint("maintour", "MainTour", "http://www.pgatour.com/data/de/v2/2017/r/tournament.json", 1, []Validator{vSizeStatus, vJSON})
 var tourse4 = NewStaticEndpoint("maintourap", "MainTourAllPlayers", "http://www.pgatour.com/data/de/v2/2017/r/all-players.json", 1, []Validator{vSizeStatus, vJSON})
 
-var tourde1 = NewDynamicEndpoint("broadcast", "Broadcast", "{{range .MainTour.upcoming_tournaments}}http://www.pgatour.com/data/de/v2/2017/r/{{.id}}/broadcast.json|||{{end}}", 1, []Validator{vSizeStatus, vJSON})
+var tourde1 = NewDynamicEndpoint("broadcast", "Broadcast", "{{range .MainTour.tournaments}}http://www.pgatour.com/data/de/v2/2017/r/{{.id}}/broadcast.json|||{{end}}", 1, []Validator{vSizeStatus, vJSON})
 
 var tourApp = Application{"PGAT", "PGA TOUR", []*Endpoint{&tourse1, &tourse2, &tourse3, &tourse4, &tourde1}}

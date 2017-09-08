@@ -74,6 +74,5 @@ func fetchEndpoint(se *Endpoint, url string) (interface{}, error) {
 		}
 
 	}
-	webLog.Debugf("Data nil? %v", data["data"] == nil)
 	return data["data"], nil
 }

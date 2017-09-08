@@ -19,7 +19,6 @@ func startPerformanceWriter(ctx context.Context, wg *sync.WaitGroup) chan *Endpo
 		for {
 			select {
 			case res := <-c:
-				log.Debugf("TODO Write result for URL: %v, time: %s duration: %v, size: %d", res.Endpoint.URL, res.CheckTime, res.Duration, res.Size)
 				recordPerformance(res)
 			case <-ctx.Done():
 				log.Debug("Shutting down Performance Writer.")
