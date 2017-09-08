@@ -104,7 +104,6 @@ func home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, r, "home", args)
-	// renderTemplate(w, r, "home", template.HTML("<a href=\"/perf/http:%2F%2Fwww.pgatour.com%2Ftest.json\">Perf TOUR</a>"))
 }
 
 func appHome(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +145,12 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 
 	requestValues := r.URL.Query()
 	dateArg := requestValues.Get("date")
+	var url string
+	if endpoint.Dynamic {
+		url = requestValues.Get("feed")
+	} else {
+		url = endpoint.URL
+	}
 
 	var date time.Time
 	if strings.EqualFold(strings.TrimSpace(dateArg), "today") {
@@ -159,7 +164,7 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	perfRecs, err := GetPerformanceRecordsForDate(endpoint.URL, date)
+	perfRecs, err := GetPerformanceRecordsForDate(url, date)
 	if err != nil {
 		errorHandler(w, r, err.Error())
 		return
@@ -177,7 +182,7 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 	templateData := make(map[string]interface{})
 	templateData["Application"] = app
 	templateData["Endpoint"] = endpoint
-	templateData["FeedURL"] = endpoint.URL
+	templateData["FeedURL"] = url
 	templateData["Date"] = date.Format("Mon Jan _2 2006")
 	templateData["graphData"] = template.JS(buildGraphMapString(perfRecs))
 	templateData["StartDate"] = template.JS(fmt.Sprintf("new Date(%d, %d, %d, 0, 0)", d.Year(), d.Month()-1, d.Day()))

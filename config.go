@@ -34,6 +34,7 @@ type Endpoint struct {
 	Dynamic          bool
 	CheckIntervalMin int
 	Validators       []Validator
+	CurrentURLs      []string // Most recent parsed dynamic URLs
 	lastCheckTime    time.Time
 	nextCheckTime    time.Time
 }
@@ -157,6 +158,8 @@ func (e *Endpoint) parseURLs(data interface{}) ([]string, error) {
 	for _, v := range urls {
 		log.Infof("Parsed Dynamic URL: %v", v)
 	}
+
+	e.CurrentURLs = urls
 
 	return urls, nil
 }
