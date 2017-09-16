@@ -61,6 +61,11 @@
     URL: {{.FeedURL}}<br/>
     Date: {{.Date}}<br/>
   </div>
+  {{ if .Endpoint.Dynamic }}
+<div><a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Next</a>
+{{ else }}
+<div><a href="?date={{.PrevDate.Format "2006-01-02"}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}">Next</a>
+{{ end }}
 
     <div id="chart_div" style="height: 500px;"></div>  
     

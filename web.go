@@ -213,6 +213,8 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 	templateData["graphData"] = template.JS(buildGraphMapString(perfRecs))
 	templateData["StartDate"] = template.JS(fmt.Sprintf("new Date(%d, %d, %d, 0, 0)", d.Year(), d.Month()-1, d.Day()))
 	templateData["EndDate"] = template.JS(fmt.Sprintf("new Date(%d, %d, %d, 0, 0)", tom.Year(), tom.Month()-1, tom.Day()))
+	templateData["NextDate"] = date.Add(24 * time.Hour)
+	templateData["PrevDate"] = date.Add(-24 * time.Hour)
 
 	renderTemplate(w, r, "endpointPerformance", templateData)
 }
