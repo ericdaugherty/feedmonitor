@@ -18,10 +18,10 @@ const (
 
 // Configuration defines the structure of the configuration file and values.
 type Configuration struct {
-	LogLevel        string
-	PerformanceLogs string
-	Applications    []*Application
-	PerfLogChannel  chan *EndpointResult
+	LogLevel         string
+	PerformanceLogs  string
+	Applications     []*Application
+	ResultLogChannel chan *EndpointResult
 }
 
 // Application defines a high level App, or set of feeds, to test
@@ -55,21 +55,22 @@ type Validator interface {
 
 // EndpointResult contains the results from checking an Endpoint.
 type EndpointResult struct {
-	Endpoint  *Endpoint
-	URL       string
-	CheckTime time.Time
-	Duration  time.Duration
-	Size      int64
-	Status    int
-	Body      []byte
+	AppKey            string
+	EndpointKey       string
+	URL               string
+	CheckTime         time.Time
+	Duration          time.Duration
+	Size              int64
+	Status            int
+	Body              []byte
+	ValidationResults []*ValidationResult
 }
 
 // ValidationResult contains the result of a validator against an Endpoint
 type ValidationResult struct {
-	EndpointResult *EndpointResult
-	Name           string
-	Valid          bool
-	Errors         []string
+	Name   string
+	Valid  bool
+	Errors []string
 }
 
 // NewStaticEndpoint initializes a new StaticEndpoint using the specified values and defaults.

@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -13,6 +15,7 @@ import (
 // }
 
 const bucketPerformanceLog = "PerformanceLog"
+const bucketEndpointResults = "EndpointResults"
 
 var db *bolt.DB
 var dbLog *logrus.Entry
@@ -46,67 +49,77 @@ func StopDatabase() {
 	db.Close()
 }
 
+// StartResultWriter creates and returns a channel that can be used to send results to be written to the database.
+func StartResultWriter(ctx context.Context, wg *sync.WaitGroup) chan *EndpointResult {
+	log := log.WithField("module", "perfwriter")
+
+	c := make(chan *EndpointResult, 100)
+
+	log.Debug("Started Result Writer.")
+
+	go func() {
+		wg.Add(1)
+		defer wg.Done()
+		for {
+			select {
+			case res := <-c:
+				recordResult(res)
+			case <-ctx.Done():
+				log.Debug("Shutting down Result Writer.")
+				return
+			}
+		}
+	}()
+
+	return c
+}
+
+func recordResult(e *EndpointResult) {
+	entry := PerformanceEntry{Duration: e.Duration.Nanoseconds() / int64(time.Millisecond), Size: e.Size}
+	WritePerformanceRecord(e, entry)
+	WriteEndpointResult(e)
+}
+
 // WritePerformanceRecord writes a single performance log record to the database.
-func WritePerformanceRecord(url string, checkTime time.Time, e PerformanceEntry) error {
+func WritePerformanceRecord(epr *EndpointResult, e PerformanceEntry) {
 
-	return db.Update(func(tx *bolt.Tx) error {
+	db.Update(func(tx *bolt.Tx) error {
 
-		b, err := tx.CreateBucketIfNotExists([]byte(bucketPerformanceLog))
+		b, err := getOrCreateBucket(tx, bucketPerformanceLog, epr.AppKey, epr.EndpointKey, epr.URL)
 		if err != nil {
-			dbLog.Errorf("Error creating PerformanceLog bucket. %v", err.Error())
+			dbLog.Errorf("Error getting PerformanceBucket for App: %v, Endpoint: %v, URL: %v - %v", epr.AppKey, epr.EndpointKey, epr.URL, err.Error())
 			return err
 		}
 
-		fb, err := b.CreateBucketIfNotExists([]byte(url))
-		if err != nil {
-			dbLog.Errorf("Error creating PerformanceLog sub-bucket: %v. %v", url, err.Error())
-			return err
-		}
-
-		k := []byte(checkTime.Format(time.RFC3339))
+		k := getTimeKey(epr.CheckTime)
 
 		var buf bytes.Buffer
 		json.NewEncoder(&buf).Encode(e)
 
-		dbLog.Debugf("Logging Performance Entry url: %v, time: %s, value: %v", url, k, buf.String())
+		dbLog.Debugf("Logging Performance Entry url: %v, time: %s, value: %v", epr.URL, k, buf.String())
 
-		return fb.Put([]byte(k), buf.Bytes())
-	})
-}
-
-// GetPerformanceBucketNames returns all the available performance log bucket names.
-func GetPerformanceBucketNames() (names []string, err error) {
-	err = db.View(func(tx *bolt.Tx) error {
-
-		b := tx.Bucket([]byte(bucketPerformanceLog))
-
-		b.ForEach(func(k, v []byte) error {
-			if len(v) == 0 {
-				names = append(names, string(k))
-			}
-			return nil
-		})
+		err = b.Put([]byte(k), buf.Bytes())
+		if err != nil {
+			dbLog.Errorf("Error writing PerformanceLog entry to db for App: %v, Endpoint: %v, URL: %v - %v", epr.AppKey, epr.EndpointKey, epr.URL, err.Error())
+			return err
+		}
 
 		return nil
 	})
-
-	return
 }
 
 // GetPerformanceRecords returns all the performance records for the provided URL.
-func GetPerformanceRecords(url string) (entries []PerformanceEntryResult, err error) {
+func GetPerformanceRecords(appKey string, endpointKey string, url string) (entries []PerformanceEntryResult, err error) {
 	err = db.View(func(tx *bolt.Tx) error {
 
-		b := tx.Bucket([]byte(bucketPerformanceLog))
+		b := getBucket(tx, bucketPerformanceLog, appKey, endpointKey, url)
 
-		fb := b.Bucket([]byte(url))
-
-		if fb == nil {
+		if b == nil {
 			entries = nil
 			return nil
 		}
 
-		fb.ForEach(func(k, v []byte) error {
+		b.ForEach(func(k, v []byte) error {
 			var entry PerformanceEntry
 			err = json.NewDecoder(bytes.NewReader(v)).Decode(&entry)
 			if err != nil {
@@ -127,22 +140,20 @@ func GetPerformanceRecords(url string) (entries []PerformanceEntryResult, err er
 }
 
 // GetPerformanceRecordsForDate returns all the performance records for the provided URL and date.
-func GetPerformanceRecordsForDate(url string, date time.Time) ([]PerformanceEntryResult, error) {
+func GetPerformanceRecordsForDate(appKey string, endpointKey string, url string, date time.Time) ([]PerformanceEntryResult, error) {
 
 	entries := make([]PerformanceEntryResult, 0, 100)
 
 	err := db.View(func(tx *bolt.Tx) error {
 
-		b := tx.Bucket([]byte(bucketPerformanceLog))
+		b := getBucket(tx, bucketPerformanceLog, appKey, endpointKey, url)
 
-		fb := b.Bucket([]byte(url))
-
-		if fb == nil {
+		if b == nil {
 			entries = nil
 			return nil
 		}
 
-		c := fb.Cursor()
+		c := b.Cursor()
 
 		year, month, day := date.Date()
 		d := time.Date(year, month, day, 0, 0, 0, 0, date.Location())
@@ -164,4 +175,72 @@ func GetPerformanceRecordsForDate(url string, date time.Time) ([]PerformanceEntr
 	})
 
 	return entries, err
+}
+
+// WriteEndpointResult writes a single endpoint result record to the database.
+func WriteEndpointResult(epr *EndpointResult) {
+
+	db.Update(func(tx *bolt.Tx) error {
+
+		b, err := getOrCreateBucket(tx, bucketEndpointResults, epr.AppKey, epr.EndpointKey, epr.URL)
+		if err != nil {
+			dbLog.Errorf("Error getting EndpointResult Bucket for App: %v, Endpoint: %v, URL: %v - %v", epr.AppKey, epr.EndpointKey, epr.URL, err.Error())
+			return err
+		}
+
+		k := getTimeKey(epr.CheckTime)
+
+		var buf bytes.Buffer
+		json.NewEncoder(&buf).Encode(epr)
+
+		dbLog.Debugf("Logging EndpointResult Entry App: %v, Endpoint: %v, URL: %v", epr.AppKey, epr.EndpointKey, epr.URL)
+
+		err = b.Put([]byte(k), buf.Bytes())
+		if err != nil {
+			dbLog.Errorf("Error writing EndpointResult entry to db for App: %v, Endpoint: %v, URL: %v - %v", epr.AppKey, epr.EndpointKey, epr.URL, err.Error())
+			return err
+		}
+
+		return nil
+	})
+}
+
+func getBucket(tx *bolt.Tx, bucketType string, appKey string, endpointKey string, url string) *bolt.Bucket {
+
+	b := tx.Bucket([]byte(bucketType))
+
+	appb := b.Bucket([]byte(appKey))
+
+	epb := appb.Bucket([]byte(endpointKey))
+
+	return epb.Bucket([]byte(url))
+}
+
+func getOrCreateBucket(tx *bolt.Tx, bucketType string, appKey string, endpointKey string, url string) (*bolt.Bucket, error) {
+
+	b, err := tx.CreateBucketIfNotExists([]byte(bucketType))
+	if err != nil {
+		return nil, err
+	}
+
+	appb, err := b.CreateBucketIfNotExists([]byte(appKey))
+	if err != nil {
+		return nil, err
+	}
+
+	epb, err := appb.CreateBucketIfNotExists([]byte(endpointKey))
+	if err != nil {
+		return nil, err
+	}
+
+	fb, err := epb.CreateBucketIfNotExists([]byte(url))
+	if err != nil {
+		return nil, err
+	}
+
+	return fb, nil
+}
+
+func getTimeKey(t time.Time) []byte {
+	return []byte(t.Format(time.RFC3339))
 }

@@ -10,62 +10,62 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func fetchEndpoint(se *Endpoint, url string) (interface{}, error) {
+func fetchEndpoint(app *Application, e *Endpoint, url string) (interface{}, error) {
 
-	log := log.WithFields(logrus.Fields{"module": "fetcher", "url": url})
+	log := log.WithFields(logrus.Fields{"module": "fetcher", "app": app.Key, "endpoint": e.Key, "url": url})
 
 	log.Debug("Fetching Endpoint")
 
-	c := &EndpointResult{Endpoint: se, URL: url}
+	epr := &EndpointResult{AppKey: app.Key, EndpointKey: e.Key, URL: url}
 
 	client := &http.Client{}
 
 	var reader io.Reader
-	if se.RequestBody != "" {
-		reader = strings.NewReader(se.RequestBody)
+	if e.RequestBody != "" {
+		reader = strings.NewReader(e.RequestBody)
 	}
 
-	req, err := http.NewRequest(se.Method, url, reader)
+	req, err := http.NewRequest(e.Method, url, reader)
 	if err != nil {
+		log.Errorf("Error creating new HTTP Request: %v", err)
 		return nil, err
 	}
 
 	// Request Headers: req.Header.Add("If-None-Match", `W/"wyzzy"`)
 
-	startTime := time.Now()
+	epr.CheckTime = time.Now()
 	resp, err := client.Do(req)
-	c.Duration = time.Now().Sub(startTime)
-	c.CheckTime = startTime
+	epr.Duration = time.Now().Sub(epr.CheckTime)
 
 	if err != nil {
-		log.Errorf("Error executing HTTP Request for URL %v, %v", url, err)
+		log.Errorf("Error executing HTTP Request: %v", err)
 		return nil, err
 	}
 
 	if resp.Body != nil {
 		defer resp.Body.Close()
-		c.Body, err = ioutil.ReadAll(resp.Body)
+		epr.Body, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
+			log.Errorf("Error reading response body: %v", err)
 			return nil, err
 		}
 	}
 
-	c.Status = resp.StatusCode
-	c.Size = resp.ContentLength
-	if c.Size == -1 {
+	epr.Status = resp.StatusCode
+	epr.Size = resp.ContentLength
+	if epr.Size == -1 {
 		log.Debug("No ContentLength set, defaulting to body string length.")
-		c.Size = int64(len(c.Body))
+		epr.Size = int64(len(epr.Body))
 	}
 
-	log.Infof("Fetched URL %v in %v with status %d and %d bytes.", url, c.Duration, c.Status, c.Size)
-	configuration.PerfLogChannel <- c
+	log.Infof("Fetched result in %v with status %d and %d bytes.", epr.Duration, epr.Status, epr.Size)
 
 	data := make(map[string]interface{})
 	vresults := []*ValidationResult{}
 
 	valid := true
-	for _, v := range se.Validators {
-		cont, res := v.validate(se, c, data)
+	for _, v := range e.Validators {
+		cont, res := v.validate(e, epr, data)
 		vresults = append(vresults, res)
 		if !res.Valid {
 			valid = false
@@ -76,12 +76,15 @@ func fetchEndpoint(se *Endpoint, url string) (interface{}, error) {
 		}
 	}
 
-	// TODO Store Validation Results
-	se.CurrentValidation = vresults
+	epr.ValidationResults = vresults
+
+	configuration.ResultLogChannel <- epr
+
+	e.CurrentValidation = vresults
 	if valid {
-		se.CurrentStatus = StatusOK
+		e.CurrentStatus = StatusOK
 	} else {
-		se.CurrentStatus = StatusFail
+		e.CurrentStatus = StatusFail
 	}
 
 	return data["data"], nil

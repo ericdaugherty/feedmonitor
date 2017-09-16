@@ -67,7 +67,7 @@ func main() {
 	notificationHandler := &NotificationHandler{make(chan Notification, 100)}
 	notificationHandler.startNotificationHandler(helperContext, &wg)
 
-	configuration.PerfLogChannel = startPerformanceWriter(helperContext, &wg)
+	configuration.ResultLogChannel = StartResultWriter(helperContext, &wg)
 
 	go startFeedMonitor(ctx, helperCancel)
 
@@ -149,10 +149,10 @@ func startFeedMonitor(ctx context.Context, cancelHelpers context.CancelFunc) {
 									log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
 								}
 								for _, url := range urls {
-									fetchEndpoint(e, url)
+									fetchEndpoint(app, e, url)
 								}
 							} else {
-								data[e.Name], _ = fetchEndpoint(e, e.URL)
+								data[e.Name], _ = fetchEndpoint(app, e, e.URL)
 							}
 						}
 					}

@@ -14,7 +14,7 @@ type ValidateSizeStatus struct {
 
 func (v *ValidateSizeStatus) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{EndpointResult: er, Name: "SizeStatus"}
+	res := ValidationResult{Name: "SizeStatus"}
 
 	statusValid := false
 	for _, status := range v.ValidStatusCodes {
@@ -48,7 +48,7 @@ type ValidateJSON struct {
 
 func (j *ValidateJSON) validate(endpoint *Endpoint, response *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{EndpointResult: response, Name: "json"}
+	res := ValidationResult{Name: "json"}
 
 	var jsonData interface{}
 	err := json.Unmarshal(response.Body, &jsonData)
