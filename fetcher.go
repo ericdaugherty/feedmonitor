@@ -50,6 +50,7 @@ func fetchEndpoint(app *Application, e *Endpoint, url string) (interface{}, erro
 			return nil, err
 		}
 	}
+	epr.Headers = resp.Header
 
 	epr.Status = resp.StatusCode
 	epr.Size = resp.ContentLength

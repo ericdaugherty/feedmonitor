@@ -62,6 +62,7 @@ type EndpointResult struct {
 	Duration          time.Duration
 	Size              int64
 	Status            int
+	Headers           map[string][]string
 	Body              []byte
 	ValidationResults []*ValidationResult
 }

@@ -37,6 +37,7 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	r.HandleFunc("/app/{app}/", appHome)
 	r.HandleFunc("/app/{app}/{endpoint}/", endpointHome)
 	r.HandleFunc("/app/{app}/{endpoint}/performance", endpointPerformance)
+	r.HandleFunc("/app/{app}/{endpoint}/replay", replayEndpointResult)
 
 	r.HandleFunc("/favicon.ico", notFoundHandler)
 	http.Handle("/", r)
@@ -122,12 +123,16 @@ func endpointHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	recentResults, _ := GetEndpointResultsForDate(app.Key, endpoint.Key, endpoint.URL, time.Now())
+
 	args := struct {
-		Application *Application
-		Endpoint    *Endpoint
+		Application   *Application
+		Endpoint      *Endpoint
+		RecentResults []EndpointResult
 	}{
 		app,
 		endpoint,
+		recentResults,
 	}
 
 	renderTemplate(w, r, "endpointHome", args)
@@ -188,6 +193,49 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "endpointPerformance", templateData)
 }
 
+func replayEndpointResult(w http.ResponseWriter, r *http.Request) {
+	found, app, endpoint := getAppEndpoint(w, r)
+	if !found {
+		notFoundHandler(w, r)
+		return
+	}
+
+	requestValues := r.URL.Query()
+	dateArg := requestValues.Get("date")
+	var url string
+	if endpoint.Dynamic {
+		url = requestValues.Get("feed")
+	} else {
+		url = endpoint.URL
+	}
+
+	var date time.Time
+	if strings.EqualFold(strings.TrimSpace(dateArg), "today") {
+		date = time.Now()
+	} else {
+		var err error
+		date, err = time.Parse(time.RFC3339, dateArg)
+		if err != nil {
+			log.Errorf("Error parsing date: %v", err.Error())
+			badRequestHandler(w, r)
+			return
+		}
+	}
+
+	epr, err := GetEndpointResult(app.Key, endpoint.Key, url, date)
+	if err != nil {
+		errorHandler(w, r, err.Error())
+		return
+	}
+	if epr == nil {
+		log.Errorf("No result Found:")
+		notFoundHandler(w, r)
+		return
+	}
+
+	renderEndpointReplay(w, r, epr)
+}
+
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	webLog.Debugf("Rendering 404 for URL %s", r.RequestURI)
 	w.WriteHeader(http.StatusNotFound)
@@ -219,6 +267,16 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 	if err != nil {
 		errorHandler(w, r, fmt.Sprintf("Unable to Excecute Template %v. Error: %v", name, err))
 	}
+}
+
+func renderEndpointReplay(w http.ResponseWriter, r *http.Request, epr *EndpointResult) {
+
+	for k, v := range epr.Headers {
+		for _, kv := range v {
+			w.Header().Add(k, kv)
+		}
+	}
+	w.Write(epr.Body)
 }
 
 func getAppEndpoint(w http.ResponseWriter, r *http.Request) (bool, *Application, *Endpoint) {
