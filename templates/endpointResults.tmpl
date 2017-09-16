@@ -1,0 +1,27 @@
+<html>
+
+<head>
+</head>
+<body>
+<div><a href="../../../../">Home</a> - <a href="../">{{.Application.Name}}</a> - <a href=".">{{.Endpoint.Name}}</a></div>
+<h2>{{.Application.Name}} - {{.Endpoint.Name}} - Results</h2>
+
+<h3>Results<h3>
+{{ if .Endpoint.Dynamic }}
+<div><a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.Feed}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.Feed}}">Next</a>
+{{ else }}
+<div><a href="?date={{.PrevDate.Format "2006-01-02"}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}">Next</a>
+{{ end }}
+<div>
+<ul>
+{{ range .Results }}
+  {{ if $.Endpoint.Dynamic }}
+  <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.Feed}}">View Result</a></li>
+  {{ else }}
+  <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}">View Result</a></li>
+  {{ end }}
+{{ end }}
+</ul>
+</div>
+</body>
+</html>

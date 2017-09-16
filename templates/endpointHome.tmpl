@@ -13,7 +13,7 @@
   <li>
     <div><a href="{{.}}">{{.}}</a></div>
     <div>View <a href="./performance?date=today&feed={{.}}">Performance Log</a></div>
-    <div>Status: Unknown</div>
+    <div>View <a href="./results?date=today&feed={{.}}">View All Results</a>
   </li>
   {{end}}
 </ul>
@@ -39,6 +39,7 @@
 <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}">View Result</a></li>
 {{end}}
 </ul>
+<a href="./results?date=today">View All Results</a>
 </div>
 {{end}}
 </body>
