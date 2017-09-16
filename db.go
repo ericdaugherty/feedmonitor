@@ -232,6 +232,34 @@ func GetEndpointResult(appKey string, endpointKey string, url string, date time.
 	return
 }
 
+// GetLastEndpointResult returns the most recent result for the specified endpoint.
+func GetLastEndpointResult(appKey string, endpointKey string, url string) (epr *EndpointResult, err error) {
+
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := getBucket(tx, bucketEndpointResults, appKey, endpointKey, url)
+
+		if b == nil {
+			return nil
+		}
+
+		_, v := b.Cursor().Last()
+
+		if len(v) == 0 {
+			return nil
+		}
+
+		err := json.NewDecoder(bytes.NewReader(v)).Decode(&epr)
+		if err != nil {
+			dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
+			return err
+		}
+		return nil
+	})
+
+	return
+}
+
 // GetEndpointResultsForDate returns all the performance records for the provided URL and date.
 func GetEndpointResultsForDate(appKey string, endpointKey string, url string, date time.Time) ([]EndpointResult, error) {
 

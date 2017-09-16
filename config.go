@@ -65,6 +65,17 @@ type EndpointResult struct {
 	Headers           map[string][]string
 	Body              []byte
 	ValidationResults []*ValidationResult
+	BodyChanged       bool
+}
+
+// Valid returns true only if all the validation results are valid.
+func (er *EndpointResult) Valid() bool {
+	for _, vr := range er.ValidationResults {
+		if !vr.Valid {
+			return false
+		}
+	}
+	return true
 }
 
 // ValidationResult contains the result of a validator against an Endpoint
