@@ -28,6 +28,7 @@ const (
 // Configuration defines the structure of the configuration file and values.
 type Configuration struct {
 	LogLevel     string
+	LogFile      string
 	Port         int
 	AppConfigDir string
 }

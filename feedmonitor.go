@@ -122,6 +122,15 @@ func initializeLogger() *logrus.Entry {
 	}
 	logrus.SetLevel(logLevel)
 
+	if len(configuration.LogFile) > 0 && !strings.EqualFold("console", configuration.LogFile) {
+		logfile, err := os.OpenFile(configuration.LogFile, os.O_CREATE|os.O_WRONLY, 0666)
+		if err != nil {
+			fmt.Printf("Error initialializing log file: %v - %v\r\n", configuration.LogFile, err)
+			os.Exit(1)
+		}
+		logrus.SetOutput(logfile)
+	}
+
 	return logrus.WithFields(logrus.Fields{"module": "core"})
 }
 

@@ -5,6 +5,7 @@
 # Logging
 
 loglevel: info
+logfile: console
 
 # Port the webserver listens on.
 port: 8080
