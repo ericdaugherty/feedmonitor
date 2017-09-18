@@ -2,12 +2,21 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 const urlSeparator = "|||"
+
+// ResultLogChannel is used to send results to the database for storage.
+var ResultLogChannel chan *EndpointResult
 
 // StatusUnknown defines valid states for Endpoint Status
 const (
@@ -18,10 +27,37 @@ const (
 
 // Configuration defines the structure of the configuration file and values.
 type Configuration struct {
-	LogLevel         string
-	PerformanceLogs  string
-	Applications     []*Application
-	ResultLogChannel chan *EndpointResult
+	LogLevel     string
+	Port         int
+	AppConfigDir string
+}
+
+// ApplicationConfig represents configuration data loaded from the configuration file for a specific application
+type ApplicationConfig struct {
+	Key        string
+	Name       string
+	Validators []ValidatorConfig
+	Endpoints  []EndpointConfig
+}
+
+// EndpointConfig represents configuration data loaded from the configuration file for a specific application
+type EndpointConfig struct {
+	Key           string
+	Name          string
+	URL           string
+	Method        string
+	RequestBody   string
+	Dynamic       bool
+	CheckInterval int
+	Validators    []string
+}
+
+// ValidatorConfig represents the
+type ValidatorConfig struct {
+	Key    string
+	Name   string
+	Type   string
+	Config map[string]interface{}
 }
 
 // Application defines a high level App, or set of feeds, to test
@@ -48,8 +84,9 @@ type Endpoint struct {
 	nextCheckTime     time.Time
 }
 
-// Validator defines the interface that feed result validitors need to implement.
+// Validator defines the interface that feed result validators need to implement.
 type Validator interface {
+	initialize(map[string]interface{})
 	validate(*Endpoint, *EndpointResult, map[string]interface{}) (bool, *ValidationResult)
 }
 
@@ -85,38 +122,116 @@ type ValidationResult struct {
 	Errors []string
 }
 
-// NewStaticEndpoint initializes a new StaticEndpoint using the specified values and defaults.
-func NewStaticEndpoint(key string, name string, url string, checkIntervalMin int, validators []Validator) Endpoint {
-	return Endpoint{Key: key, Name: name, URL: url, Method: "GET", Dynamic: false, CheckIntervalMin: checkIntervalMin, Validators: validators, lastCheckTime: time.Unix(0, 0), nextCheckTime: time.Now()}
-}
+func loadConfigFile() *Configuration {
 
-// NewDynamicEndpoint initializes a new StaticEndpoint using the specified values and defaults.
-func NewDynamicEndpoint(key string, name string, url string, checkIntervalMin int, validators []Validator) Endpoint {
-	return Endpoint{Key: key, Name: name, URL: url, Method: "GET", Dynamic: true, CheckIntervalMin: checkIntervalMin, Validators: validators, lastCheckTime: time.Unix(0, 0), nextCheckTime: time.Now()}
+	var c = &Configuration{}
+	c.LogLevel = "warn"
+	b, err := ioutil.ReadFile(options.ConfigPath)
+	if err != nil {
+		fmt.Println("Unable to load configuration file:", options.ConfigPath, err)
+		os.Exit(1)
+	}
+	err = yaml.UnmarshalStrict(b, c)
+	if err != nil {
+		fmt.Println("Unable to parse configuration file.", err)
+		os.Exit(1)
+	}
+	return c
 }
 
 func (c *Configuration) initialize() {
-	// Setup default values
-	c.LogLevel = "warn"
-	c.PerformanceLogs = "performance"
-
-	// TODO Load Config from file?
-
-	// Override configuration file with command line parameters as needed.
-
-	// ## TEMP Data
-
-	configuration.Applications = []*Application{&tourApp}
-
-	// ## END TEMP Data
 
 	if options.LogLevel != "" {
 		c.LogLevel = options.LogLevel
 	}
+
+}
+
+func (c *Configuration) initializeValidator(vtype string) (Validator, bool) {
+	switch vtype {
+	case "JSON":
+		return &ValidateJSON{}, true
+	case "SizeStatus":
+		return &ValidateSizeStatus{}, true
+	default:
+		return nil, false
+	}
+}
+
+func (c *Configuration) initializeApplications() {
+
+	path := filepath.Join(c.AppConfigDir, "*.yaml")
+	files, err := filepath.Glob(path)
+	if err != nil {
+		log.Fatalf("Error parsing configuration files. %v", err)
+	}
+
+	apps := make([]*Application, len(files))
+
+	for i, file := range files {
+		log.Infof("Loading Appplication Configuration file: %v", file)
+		apps[i] = c.initializeApplication(file)
+	}
+
+	applications = apps
+}
+
+func (c *Configuration) initializeApplication(file string) *Application {
+
+	var a = &ApplicationConfig{}
+	b, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Fatalf("Unable to load application configuration file: %v - %v", file, err)
+	}
+	err = yaml.UnmarshalStrict(b, a)
+	if err != nil {
+		log.Fatalf("Unable to parse application configuration file: %v - %v", file, err)
+	}
+
+	app := &Application{Key: a.Key, Name: a.Name}
+
+	// Create and initialize the validators needed in the Endpoints.
+	validators := make(map[string]Validator)
+	for _, e := range a.Validators {
+		v, ok := c.initializeValidator(e.Type)
+		if !ok {
+			log.Fatalf("Unknown Validator type %v", e.Type)
+		}
+		v.initialize(e.Config)
+		validators[e.Key] = v
+	}
+
+	// Create and initialize all the endpoints.
+	eps := make([]*Endpoint, len(a.Endpoints))
+	for i, e := range a.Endpoints {
+
+		ep := &Endpoint{
+			Key:              e.Key,
+			Name:             e.Name,
+			URL:              e.URL,
+			Method:           e.Method,
+			RequestBody:      e.RequestBody,
+			Dynamic:          e.Dynamic,
+			CheckIntervalMin: e.CheckInterval,
+			lastCheckTime:    time.Unix(0, 0),
+			nextCheckTime:    time.Now(),
+		}
+		v := make([]Validator, len(e.Validators))
+		for i, v1 := range e.Validators {
+			v[i] = validators[v1]
+		}
+		ep.Validators = v
+
+		eps[i] = ep
+	}
+	app.Endpoints = eps
+
+	return app
+
 }
 
 func (c *Configuration) getApplication(key string) *Application {
-	for _, v := range configuration.Applications {
+	for _, v := range applications {
 		if strings.EqualFold(v.Key, key) {
 			return v
 		}
@@ -185,15 +300,3 @@ func (e *Endpoint) parseURLs(data interface{}) ([]string, error) {
 
 	return urls, nil
 }
-
-var vSizeStatus = &ValidateSizeStatus{ValidStatusCodes: []int{200}, MinimumSize: 100, MaximumSize: 1000000}
-var vJSON = &ValidateJSON{}
-
-var tourse1 = NewStaticEndpoint("tours", "Tours", "http://static.pgatour.com/mobile/v2/toursV2.json", 1, []Validator{vSizeStatus, vJSON})
-var tourse2 = NewStaticEndpoint("config", "Config", "http://static.pgatour.com/mobile/v2/configV2.json", 1, []Validator{vSizeStatus, vJSON})
-var tourse3 = NewStaticEndpoint("maintour", "MainTour", "http://www.pgatour.com/data/de/v2/2017/r/tournament.json", 1, []Validator{vSizeStatus, vJSON})
-var tourse4 = NewStaticEndpoint("maintourap", "MainTourAllPlayers", "http://www.pgatour.com/data/de/v2/2017/r/all-players.json", 1, []Validator{vSizeStatus, vJSON})
-
-var tourde1 = NewDynamicEndpoint("broadcast", "Broadcast", "{{range .MainTour.tournaments}}http://www.pgatour.com/data/de/v2/2017/r/{{.id}}/broadcast.json|||{{end}}", 1, []Validator{vSizeStatus, vJSON})
-
-var tourApp = Application{"PGAT", "PGA TOUR", []*Endpoint{&tourse1, &tourse2, &tourse3, &tourse4, &tourde1}}

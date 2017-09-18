@@ -21,6 +21,7 @@ type Options struct {
 
 var options Options
 var configuration = &Configuration{}
+var applications []*Application
 var log *logrus.Entry
 var shutdown = false
 
@@ -37,11 +38,14 @@ func main() {
 		}
 	}
 
+	configuration = loadConfigFile()
 	configuration.initialize()
 
 	log = initializeLogger()
 
 	log.Info("FeedMonitor Starting...")
+
+	configuration.initializeApplications()
 
 	err := StartDatabase("feedmon.db", log)
 	if err != nil {
@@ -62,12 +66,12 @@ func main() {
 		cancel()
 	}()
 
-	StartWebserver(ctx, &wg, log, 8080)
+	StartWebserver(ctx, &wg, log, configuration.Port)
 
 	notificationHandler := &NotificationHandler{make(chan Notification, 100)}
 	notificationHandler.startNotificationHandler(helperContext, &wg)
 
-	configuration.ResultLogChannel = StartResultWriter(helperContext, &wg)
+	ResultLogChannel = StartResultWriter(helperContext, &wg)
 
 	go startFeedMonitor(ctx, helperCancel)
 
@@ -135,7 +139,7 @@ func startFeedMonitor(ctx context.Context, cancelHelpers context.CancelFunc) {
 			select {
 			case <-ticker.C:
 				var data = make(map[string]interface{})
-				for _, app := range configuration.Applications {
+				for _, app := range applications {
 					for _, e := range app.Endpoints {
 						if shutdown {
 							log.Debug("Shutting down Feed Checker. BY BOOL")

@@ -99,7 +99,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	args := struct {
 		Applications []*Application
 	}{
-		configuration.Applications,
+		applications,
 	}
 
 	renderTemplate(w, r, "home", args)

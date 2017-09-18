@@ -12,6 +12,22 @@ type ValidateSizeStatus struct {
 	MaximumSize      int64
 }
 
+func (v *ValidateSizeStatus) initialize(data map[string]interface{}) {
+	v.MinimumSize = int64(data["minsize"].(int))
+	v.MaximumSize = int64(data["maxsize"].(int))
+	s := data["status"]
+	switch ts := s.(type) {
+	case int:
+		v.ValidStatusCodes = []int{ts}
+	case []interface{}:
+		status := make([]int, len(ts))
+		for i, v := range ts {
+			status[i] = v.(int)
+		}
+		v.ValidStatusCodes = status
+	}
+}
+
 func (v *ValidateSizeStatus) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
 	res := ValidationResult{Name: "SizeStatus"}
@@ -44,6 +60,9 @@ func (v *ValidateSizeStatus) validate(e *Endpoint, er *EndpointResult, data map[
 
 // ValidateJSON provides validation of JSON files.
 type ValidateJSON struct {
+}
+
+func (j *ValidateJSON) initialize(data map[string]interface{}) {
 }
 
 func (j *ValidateJSON) validate(endpoint *Endpoint, response *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {

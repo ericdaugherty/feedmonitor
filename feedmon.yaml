@@ -1,0 +1,14 @@
+#
+# FeedMonitor Configuration File
+#
+
+# Logging
+
+loglevel: info
+
+# Port the webserver listens on.
+port: 8080
+
+# Directory where the individual application configuration files are stored.
+appconfigdir: cfg
+
