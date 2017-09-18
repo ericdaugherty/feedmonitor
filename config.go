@@ -219,6 +219,10 @@ func (c *Configuration) initializeApplication(file string) *Application {
 		}
 		v := make([]Validator, len(e.Validators))
 		for i, v1 := range e.Validators {
+			val := validators[v1]
+			if val == nil {
+				log.Fatalf("Unable to find Validator %v for Endpoint %v (%v) in app %v", v1, e.Name, e.Key, a.Name)
+			}
 			v[i] = validators[v1]
 		}
 		ep.Validators = v

@@ -332,10 +332,19 @@ func GetEndpointResultsForDate(appKey string, endpointKey string, url string, da
 func getBucket(tx *bolt.Tx, bucketType string, appKey string, endpointKey string, url string) *bolt.Bucket {
 
 	b := tx.Bucket([]byte(bucketType))
+	if b == nil {
+		return nil
+	}
 
 	appb := b.Bucket([]byte(appKey))
+	if appb == nil {
+		return nil
+	}
 
 	epb := appb.Bucket([]byte(endpointKey))
+	if epb == nil {
+		return nil
+	}
 
 	return epb.Bucket([]byte(url))
 }
