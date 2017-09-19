@@ -37,7 +37,6 @@ func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error)
 
 	gitRepo, ok := repos[dir]
 	if ok {
-		gitRepo.log.Debug("Found existing GitRepo")
 		return gitRepo, nil
 	}
 
@@ -105,7 +104,6 @@ func (g *GitRepo) UpdateFeed(body []byte, checkTime time.Time) (string, bool, er
 	// Add the file if it is new.
 	fs := s.File(bodyFileName)
 	if fs.Worktree == '?' {
-		g.log.Debugf("Adding new file to repo.")
 		_, err := w.Add(bodyFileName)
 		if err != nil {
 			g.log.Errorf("Error adding new file to repo. %v", err)
@@ -113,7 +111,6 @@ func (g *GitRepo) UpdateFeed(body []byte, checkTime time.Time) (string, bool, er
 		}
 	}
 
-	g.log.Debugf("Comitting file (new or updated)")
 	h, err := w.Commit(checkTime.Format(time.RFC3339), &git.CommitOptions{All: true,
 		Author: &object.Signature{
 			Name:  "FeedMonitor",
