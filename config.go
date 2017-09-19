@@ -29,6 +29,7 @@ const (
 type Configuration struct {
 	LogLevel     string
 	LogFile      string
+	GitRoot      string
 	Port         int
 	AppConfigDir string
 }

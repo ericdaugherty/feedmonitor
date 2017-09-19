@@ -7,6 +7,9 @@
 loglevel: info
 logfile: console
 
+# Git
+gitroot: repos
+
 # Port the webserver listens on.
 port: 8080
 
