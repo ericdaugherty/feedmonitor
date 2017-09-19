@@ -152,8 +152,10 @@ func (c *Configuration) initializeValidator(vtype string) (Validator, bool) {
 	switch vtype {
 	case "JSON":
 		return &ValidateJSON{}, true
-	case "SizeStatus":
-		return &ValidateSizeStatus{}, true
+	case "Status":
+		return &ValidateStatus{}, true
+	case "Size":
+		return &ValidateSize{}, true
 	default:
 		return nil, false
 	}

@@ -5,16 +5,12 @@ import (
 	"fmt"
 )
 
-// ValidateSizeStatus validates the size of the result returned and the status codes.
-type ValidateSizeStatus struct {
+// ValidateStatus validates that the HTTP Status code is one of a set of expected values.
+type ValidateStatus struct {
 	ValidStatusCodes []int
-	MinimumSize      int64
-	MaximumSize      int64
 }
 
-func (v *ValidateSizeStatus) initialize(data map[string]interface{}) {
-	v.MinimumSize = int64(data["minsize"].(int))
-	v.MaximumSize = int64(data["maxsize"].(int))
+func (v *ValidateStatus) initialize(data map[string]interface{}) {
 	s := data["status"]
 	switch ts := s.(type) {
 	case int:
@@ -28,34 +24,49 @@ func (v *ValidateSizeStatus) initialize(data map[string]interface{}) {
 	}
 }
 
-func (v *ValidateSizeStatus) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
+func (v *ValidateStatus) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{Name: "SizeStatus"}
+	res := ValidationResult{Name: "Status"}
 
-	statusValid := false
 	for _, status := range v.ValidStatusCodes {
 		if er.Status == status {
-			statusValid = true
+			res.Valid = true
 			break
 		}
 	}
-	if !statusValid {
+	if !res.Valid {
 		res.Errors = append(res.Errors, fmt.Sprintf("Status Code %d does not match expected Status Code(s): %v", er.Status, v.ValidStatusCodes))
 	}
 
-	sizeValid := true
+	return true, &res
+}
+
+// ValidateSize validates the size of the result returned.
+type ValidateSize struct {
+	MinimumSize int64
+	MaximumSize int64
+}
+
+func (v *ValidateSize) initialize(data map[string]interface{}) {
+	v.MinimumSize = int64(data["minsize"].(int))
+	v.MaximumSize = int64(data["maxsize"].(int))
+}
+
+func (v *ValidateSize) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
+
+	res := ValidationResult{Name: "Size"}
+
+	res.Valid = true
 	if v.MinimumSize > 0 && er.Size < v.MinimumSize {
-		sizeValid = false
+		res.Valid = false
 		res.Errors = append(res.Errors, fmt.Sprintf("Size of body (%d) was smaller than the minimum size (%d).", er.Size, v.MinimumSize))
 	}
 	if v.MaximumSize > 0 && er.Size > v.MaximumSize {
-		sizeValid = false
+		res.Valid = false
 		res.Errors = append(res.Errors, fmt.Sprintf("Size of body (%d) was larger than the maximum size (%d).", er.Size, v.MaximumSize))
 	}
 
-	res.Valid = statusValid && sizeValid
-
-	return res.Valid, &res
+	return true, &res
 }
 
 // ValidateJSON provides validation of JSON files.
