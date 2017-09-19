@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/base64"
+	"encoding/base32"
 	"io/ioutil"
 	"path/filepath"
 	"time"
@@ -32,7 +32,7 @@ type GitRepo struct {
 // GetGitRepo Returns a GitRepo that provides access to a specific git repository.
 func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error) {
 
-	encodedURL := base64.StdEncoding.EncodeToString([]byte(url))
+	encodedURL := base32.StdEncoding.EncodeToString([]byte(url))
 	dir := filepath.Join(configuration.GitRoot, appKey, endpointKey, encodedURL)
 
 	gitRepo, ok := repos[dir]

@@ -102,7 +102,8 @@ type EndpointResult struct {
 	Size              int64
 	Status            int
 	Headers           map[string][]string
-	Body              []byte
+	Body              []byte `json:"-"`
+	BodyHash          string
 	ValidationResults []*ValidationResult
 	BodyChanged       bool
 }
@@ -115,6 +116,21 @@ func (er *EndpointResult) Valid() bool {
 		}
 	}
 	return true
+}
+
+// LoadBody loads the body of the result from storage.
+func (er *EndpointResult) LoadBody() error {
+	r, err := GetGitRepo(er.AppKey, er.EndpointKey, er.URL)
+	if err != nil {
+		return err
+	}
+
+	b, err := r.GetBody(er.BodyHash)
+	if err != nil {
+		return err
+	}
+	er.Body = b
+	return nil
 }
 
 // ValidationResult contains the result of a validator against an Endpoint

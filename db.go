@@ -63,6 +63,8 @@ func StartResultWriter(ctx context.Context, wg *sync.WaitGroup) chan *EndpointRe
 		for {
 			select {
 			case res := <-c:
+				saveResultBody(res)
+				log.Debugf("Saved Body, hash: %v", res.BodyHash)
 				recordResult(res)
 			case <-ctx.Done():
 				log.Debug("Shutting down Result Writer.")
@@ -72,6 +74,23 @@ func StartResultWriter(ctx context.Context, wg *sync.WaitGroup) chan *EndpointRe
 	}()
 
 	return c
+}
+
+func saveResultBody(er *EndpointResult) {
+	r, err := GetGitRepo(er.AppKey, er.EndpointKey, er.URL)
+	if err != nil {
+		log.Errorf("Unable to write results for URL %v. Error: %v", er.URL, err)
+		return
+	}
+
+	hash, changed, err := r.UpdateFeed(er.Body, er.CheckTime)
+	if err != nil {
+		log.Errorf("Unable to write results for URL %v. Error: %v", er.URL, err)
+		return
+	}
+
+	er.BodyHash = hash
+	er.BodyChanged = changed
 }
 
 func recordResult(e *EndpointResult) {
@@ -226,6 +245,7 @@ func GetEndpointResult(appKey string, endpointKey string, url string, date time.
 			dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 			return err
 		}
+		epr.LoadBody()
 		return nil
 	})
 
@@ -254,6 +274,7 @@ func GetLastEndpointResult(appKey string, endpointKey string, url string) (epr *
 			dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 			return err
 		}
+		epr.LoadBody()
 		return nil
 	})
 
@@ -285,6 +306,7 @@ func GetLastNEndpointResult(appKey string, endpointKey string, url string, n int
 				dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 				return err
 			}
+			entry.LoadBody()
 			entries = append(entries, entry)
 		}
 		return nil
@@ -321,6 +343,7 @@ func GetEndpointResultsForDate(appKey string, endpointKey string, url string, da
 				dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 				return err
 			}
+			entry.LoadBody()
 			entries = append(entries, entry)
 		}
 		return nil

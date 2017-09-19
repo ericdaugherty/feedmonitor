@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -75,20 +74,6 @@ func fetchEndpoint(app *Application, e *Endpoint, url string) (interface{}, erro
 		}
 		if !cont {
 			break
-		}
-	}
-
-	prevEpr, err := GetLastEndpointResult(app.Key, e.Key, url)
-	if err != nil {
-		log.Warnf("Unable to compare result to previous body. %v", err.Error())
-		epr.BodyChanged = true
-	} else if prevEpr == nil {
-		log.Infof("Unable to compare result to previous body. No Previous result in databse.")
-	} else {
-		if bytes.Compare(epr.Body, prevEpr.Body) != 0 {
-			epr.BodyChanged = true
-		} else {
-			epr.BodyChanged = false
 		}
 	}
 
