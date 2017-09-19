@@ -26,7 +26,6 @@ type GitRepo struct {
 	URL         string
 	Directory   string
 	repo        *git.Repository
-	worktree    *git.Worktree
 	log         *logrus.Entry
 }
 
@@ -54,13 +53,6 @@ func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error)
 	}
 	gitRepo.repo = r
 
-	w, err := gitRepo.repo.Worktree()
-	if err != nil {
-		gitRepo.log.Errorf("Error accesing git WorkTree. %v", err)
-		return nil, err
-	}
-	gitRepo.worktree = w
-
 	repos[dir] = gitRepo
 
 	return gitRepo, nil
@@ -86,9 +78,16 @@ func (g *GitRepo) UpdateFeed(body []byte, checkTime time.Time) (string, bool, er
 	err := ioutil.WriteFile(filepath.Join(g.Directory, bodyFileName), body, 0644)
 	if err != nil {
 		g.log.Errorf("Error writing file. %v", err)
+		return "", false, err
 	}
 
-	s, err := g.worktree.Status()
+	w, err := g.repo.Worktree()
+	if err != nil {
+		g.log.Errorf("Error accesing git WorkTree. %v", err)
+		return "", false, err
+	}
+
+	s, err := w.Status()
 	if err != nil {
 		g.log.Errorf("Error getting status from working tree. %v", err)
 		return "", false, err
@@ -107,7 +106,7 @@ func (g *GitRepo) UpdateFeed(body []byte, checkTime time.Time) (string, bool, er
 	fs := s.File(bodyFileName)
 	if fs.Worktree == '?' {
 		g.log.Debugf("Adding new file to repo.")
-		_, err := g.worktree.Add(bodyFileName)
+		_, err := w.Add(bodyFileName)
 		if err != nil {
 			g.log.Errorf("Error adding new file to repo. %v", err)
 			return "", false, err
@@ -115,7 +114,7 @@ func (g *GitRepo) UpdateFeed(body []byte, checkTime time.Time) (string, bool, er
 	}
 
 	g.log.Debugf("Comitting file (new or updated)")
-	h, err := g.worktree.Commit(checkTime.Format(time.RFC3339), &git.CommitOptions{All: true,
+	h, err := w.Commit(checkTime.Format(time.RFC3339), &git.CommitOptions{All: true,
 		Author: &object.Signature{
 			Name:  "FeedMonitor",
 			Email: "eric.daugherty@possible.com",
