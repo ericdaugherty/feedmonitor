@@ -8,8 +8,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"gopkg.in/src-d/go-billy.v3/memfs"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 const bodyFileName = "body"
@@ -121,4 +124,36 @@ func (g *GitRepo) UpdateFeed(body []byte, checkTime time.Time) (string, bool, er
 	})
 
 	return h.String(), true, nil
+}
+
+// GetBody returns the contents of the Reponse body for a given Hash.
+func (g *GitRepo) GetBody(hash string) ([]byte, error) {
+
+	var r *git.Repository
+	fs := memfs.New()
+	r, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{URL: g.Directory})
+	if err != nil {
+		g.log.Errorf("Error cloning repo into memory. %v", err)
+		return nil, err
+	}
+
+	w, err := r.Worktree()
+	if err != nil {
+		g.log.Errorf("Error getting working tree from in-memory repo. %v", err)
+		return nil, err
+	}
+
+	err = w.Checkout(&git.CheckoutOptions{Hash: plumbing.NewHash(hash)})
+	if err != nil {
+		g.log.Errorf("Error checking out for hash: %v Error: %v", hash, err)
+		return nil, err
+	}
+
+	f, err := fs.Open(bodyFileName)
+	if err != nil {
+		g.log.Errorf("Error opening body for hash %v Error: %v", hash, err)
+		return nil, err
+	}
+
+	return ioutil.ReadAll(f)
 }
