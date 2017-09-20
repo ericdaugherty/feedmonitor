@@ -66,10 +66,9 @@ func main() {
 		cancel()
 	}()
 
-	StartWebserver(ctx, &wg, log, configuration.Port)
+	StartWebserver(ctx, &wg, log, configuration.WebPort)
 
-	notificationHandler := &NotificationHandler{make(chan Notification, 100)}
-	notificationHandler.startNotificationHandler(helperContext, &wg)
+	NotificationChannel = StartNotificationHandler(helperContext, &wg)
 
 	ResultLogChannel = StartResultWriter(helperContext, &wg)
 

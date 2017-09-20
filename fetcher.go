@@ -80,6 +80,7 @@ func fetchEndpoint(app *Application, e *Endpoint, url string) (interface{}, erro
 	epr.ValidationResults = vresults
 
 	ResultLogChannel <- epr
+	NotificationChannel <- &Notification{Application: app, Endpoint: e, EndpointResult: epr}
 
 	e.CurrentValidation = vresults
 	if valid {

@@ -5,18 +5,18 @@ import (
 	"sync"
 )
 
-// NotificationHandler manages the notification queue and execution.
-type NotificationHandler struct {
-	channel chan Notification
-}
-
 // Notification represents a notification to be sent.
 type Notification struct {
-	Message string
+	Application    *Application
+	Endpoint       *Endpoint
+	EndpointResult *EndpointResult
 }
 
-func (h *NotificationHandler) startNotificationHandler(ctx context.Context, wg *sync.WaitGroup) {
+// StartNotificationHandler starts the goroutine to process notifications.
+func StartNotificationHandler(ctx context.Context, wg *sync.WaitGroup) chan *Notification {
 	log := log.WithField("module", "notification")
+
+	n := make(chan *Notification, 100)
 
 	go func() {
 		log.Debug("Starting Notification Handler")
@@ -25,12 +25,16 @@ func (h *NotificationHandler) startNotificationHandler(ctx context.Context, wg *
 		defer wg.Done()
 		for {
 			select {
-			case x := <-h.channel:
-				log.Debug("Message: ", x.Message)
+			case nf := <-n:
+				for _, nh := range nf.Endpoint.Notifiers {
+					nh.notify(nf)
+				}
 			case <-ctx.Done():
 				log.Debug("Shutting down Notification Handler.")
 				return
 			}
 		}
 	}()
+
+	return n
 }

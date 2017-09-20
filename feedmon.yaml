@@ -11,7 +11,8 @@ logfile: console
 gitroot: repos
 
 # Port the webserver listens on.
-port: 8080
+webport: 8080
+webroot: "http://localhost:8080"
 
 # Directory where the individual application configuration files are stored.
 appconfigdir: cfg
