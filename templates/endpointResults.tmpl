@@ -16,9 +16,9 @@
 <ul>
 {{ range .Results }}
   {{ if $.Endpoint.Dynamic }}
-  <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.Feed}}">View Result</a></li>
+  <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} {{ if .BodyChanged }} <a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.Feed}}">diff</a> {{end}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.Feed}}">View Result</a></li>
   {{ else }}
-  <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}">View Result</a></li>
+  <li>{{.CheckTime.Format "2006-01-02 15:04:05 MST"}} {{.Duration}} - {{.Size}}b - Body Changed? {{.BodyChanged}} {{ if .BodyChanged }} <a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}">diff</a> {{end}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}">View Result</a></li>
   {{ end }}
 {{ end }}
 </ul>

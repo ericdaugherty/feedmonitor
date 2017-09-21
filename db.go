@@ -252,6 +252,36 @@ func GetEndpointResult(appKey string, endpointKey string, url string, date time.
 	return
 }
 
+// GetEndpointResultPrev returns the endpoint result immediately previous to the specified date.
+func GetEndpointResultPrev(appKey string, endpointKey string, url string, date time.Time) (epr *EndpointResult, err error) {
+
+	err = db.View(func(tx *bolt.Tx) error {
+
+		b := getBucket(tx, bucketEndpointResults, appKey, endpointKey, url)
+
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+		c.Seek(getTimeKey(date))
+		_, v := c.Prev()
+		if len(v) == 0 {
+			return nil
+		}
+
+		err := json.NewDecoder(bytes.NewReader(v)).Decode(&epr)
+		if err != nil {
+			dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
+			return err
+		}
+		epr.LoadBody()
+		return nil
+	})
+
+	return
+}
+
 // GetLastEndpointResult returns the most recent result for the specified endpoint.
 func GetLastEndpointResult(appKey string, endpointKey string, url string) (epr *EndpointResult, err error) {
 
@@ -274,7 +304,6 @@ func GetLastEndpointResult(appKey string, endpointKey string, url string) (epr *
 			dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 			return err
 		}
-		epr.LoadBody()
 		return nil
 	})
 
@@ -306,7 +335,6 @@ func GetLastNEndpointResult(appKey string, endpointKey string, url string, n int
 				dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 				return err
 			}
-			entry.LoadBody()
 			entries = append(entries, entry)
 		}
 		return nil
@@ -343,7 +371,6 @@ func GetEndpointResultsForDate(appKey string, endpointKey string, url string, da
 				dbLog.Errorf("Error decoding JSON from record: %v", err.Error())
 				return err
 			}
-			entry.LoadBody()
 			entries = append(entries, entry)
 		}
 		return nil

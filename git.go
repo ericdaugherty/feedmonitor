@@ -129,7 +129,7 @@ func (g *GitRepo) GetBody(hash string) ([]byte, error) {
 	fs := memfs.New()
 	r, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{URL: g.Directory})
 	if err != nil {
-		g.log.Errorf("Error cloning repo into memory. %v", err)
+		g.log.Errorf("Error cloning repo: %v into memory. %v", g.Directory, err)
 		return nil, err
 	}
 

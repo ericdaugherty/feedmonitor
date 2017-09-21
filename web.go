@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -34,11 +36,14 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", home)
+	r.Handle("/js/{rest}", http.StripPrefix("/js/", http.FileServer(http.Dir("web/js"))))
+	r.Handle("/css/{rest}", http.StripPrefix("/css/", http.FileServer(http.Dir("web/css"))))
 	r.HandleFunc("/app/{app}/", appHome)
 	r.HandleFunc("/app/{app}/{endpoint}/", endpointHome)
 	r.HandleFunc("/app/{app}/{endpoint}/results", endpointResults)
 	r.HandleFunc("/app/{app}/{endpoint}/performance", endpointPerformance)
-	r.HandleFunc("/app/{app}/{endpoint}/replay", replayEndpointResult)
+	r.HandleFunc("/app/{app}/{endpoint}/replay", endpointReplay)
+	r.HandleFunc("/app/{app}/{endpoint}/diff", endpointDiff)
 
 	r.HandleFunc("/favicon.ico", notFoundHandler)
 	http.Handle("/", r)
@@ -219,7 +224,7 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "endpointPerformance", templateData)
 }
 
-func replayEndpointResult(w http.ResponseWriter, r *http.Request) {
+func endpointReplay(w http.ResponseWriter, r *http.Request) {
 	found, app, endpoint := getAppEndpoint(w, r)
 	if !found {
 		notFoundHandler(w, r)
@@ -245,6 +250,66 @@ func replayEndpointResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderEndpointReplay(w, r, epr)
+}
+
+func endpointDiff(w http.ResponseWriter, r *http.Request) {
+	found, app, endpoint := getAppEndpoint(w, r)
+	if !found {
+		notFoundHandler(w, r)
+		return
+	}
+
+	url := getURL(endpoint, r)
+	dv, date := getDate(r, time.RFC3339)
+	if !dv {
+		badRequestHandler(w, r)
+		return
+	}
+
+	epr, err := GetEndpointResult(app.Key, endpoint.Key, url, date)
+	if err != nil {
+		errorHandler(w, r, err.Error())
+		return
+	}
+	if epr == nil {
+		log.Errorf("No result Found:")
+		notFoundHandler(w, r)
+		return
+	}
+
+	oldEpr, err := GetEndpointResultPrev(app.Key, endpoint.Key, url, date)
+	if err != nil {
+		errorHandler(w, r, err.Error())
+		return
+	}
+	if epr == nil {
+		log.Errorf("No result Found:")
+		notFoundHandler(w, r)
+		return
+	}
+
+	var oldPretty bytes.Buffer
+	var newPretty bytes.Buffer
+	json.Indent(&oldPretty, oldEpr.Body, "", "  ")
+	json.Indent(&newPretty, epr.Body, "", "  ")
+
+	args := struct {
+		Application *Application
+		Endpoint    *Endpoint
+		OldResult   *EndpointResult
+		NewResult   *EndpointResult
+		OldBody     string
+		NewBody     string
+	}{
+		app,
+		endpoint,
+		epr,
+		epr,
+		string(oldPretty.Bytes()),
+		string(newPretty.Bytes()),
+	}
+
+	renderTemplate(w, r, "endpointDiff", args)
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
@@ -314,7 +379,11 @@ func getURL(e *Endpoint, r *http.Request) string {
 }
 
 func getDate(r *http.Request, format string) (bool, time.Time) {
-	dateArg := r.URL.Query().Get("date")
+	return getDateFromField(r, format, "date")
+}
+
+func getDateFromField(r *http.Request, format string, dateField string) (bool, time.Time) {
+	dateArg := r.URL.Query().Get(dateField)
 	var date time.Time
 	if strings.EqualFold(strings.TrimSpace(dateArg), "today") {
 		return true, time.Now()
