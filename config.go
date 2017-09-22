@@ -199,6 +199,8 @@ func (c *Configuration) initializeValidator(vtype string) (Validator, bool) {
 	switch vtype {
 	case "JSON":
 		return &ValidateJSON{}, true
+	case "JSONData":
+		return &ValidateJSONData{}, true
 	case "Status":
 		return &ValidateStatus{}, true
 	case "Size":
