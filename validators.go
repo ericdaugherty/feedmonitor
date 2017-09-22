@@ -186,10 +186,24 @@ func (j *ValidateJSONData) validateValue(keys []string, command string, value in
 
 	switch tv := value.(type) {
 	case bool:
-		if (tv && !strings.EqualFold(v, "true")) || (!tv && !strings.EqualFold(v, "false")) {
-			return fmt.Sprintf("Boolean comparison failed for key %v. Expected value of %v did not match actual value %v", key, v, tv)
+		switch c {
+		case "type":
+			if !(strings.EqualFold(v, "bool") || strings.EqualFold(v, "boolean")) {
+				return fmt.Sprintf("Type comparison failed for key %v. Actual value: %v was a number but expected type %v", key, tv, v)
+			}
+		case "=":
+			if (tv && !strings.EqualFold(v, "true")) || (!tv && !strings.EqualFold(v, "false")) {
+				return fmt.Sprintf("Boolean comparison failed for key %v. Expected value of %v did not match actual value %v", key, v, tv)
+			}
 		}
 	case float64:
+		if strings.EqualFold(c, "type") {
+			if !(strings.EqualFold(v, "number") || strings.EqualFold(v, "int")) {
+				return fmt.Sprintf("Type comparison failed for key %v. Actual value: %v was a number but expected type %v", key, tv, v)
+			}
+			return ""
+		}
+
 		cv, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			return fmt.Sprintf("Number comparison failed for key %v. Unable to convert expected value: %v to a number.", key, v)
@@ -223,12 +237,27 @@ func (j *ValidateJSONData) validateValue(keys []string, command string, value in
 		}
 	case string:
 		switch c {
+		case "type":
+			if !strings.EqualFold(v, "string") {
+				return fmt.Sprintf("Type comparison failed for key %v. Actual value: %v was a string but expected type %v", key, tv, v)
+			}
 		case "=":
 			if tv != v {
-				return fmt.Sprintf("String comparsison failed for key %v. Actual value %v is not equal to comparison value %v", key, tv, v)
+				return fmt.Sprintf("String comparison failed for key %v. Actual value %v is not equal to comparison value %v", key, tv, v)
+			}
+		case "!=":
+			if tv == v {
+				return fmt.Sprintf("String comparison failed for key %v. Actual value %v is equal to comparison value %v", key, tv, v)
 			}
 		}
 	case []interface{}:
+		if strings.EqualFold(c, "type") {
+			if !(strings.EqualFold(v, "[]") || strings.EqualFold(v, "array")) {
+				return fmt.Sprintf("Type comparison failed for key %v. Actual value: %v was an array but expected type %v", key, tv, v)
+			}
+			return ""
+		}
+
 		av := int64(len(tv))
 		cv, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
@@ -260,6 +289,8 @@ func (j *ValidateJSONData) validateValue(keys []string, command string, value in
 				return fmt.Sprintf("Array length comparison failed for key %v. Actual value %v was not less than or equal to comparison value %v", key, av, cv)
 			}
 		}
+	default:
+		return fmt.Sprintf("Unexpected type %v encountered for key %v of value %v.", reflect.TypeOf(tv), key, tv)
 	}
 
 	return ""
