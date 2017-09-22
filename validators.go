@@ -98,11 +98,15 @@ func (j *ValidateJSON) validate(endpoint *Endpoint, response *EndpointResult, da
 
 // ValidateJSONData provides validation of specific values in JSON files.
 type ValidateJSONData struct {
-	config map[string]interface{}
+	config []map[interface{}]interface{}
 }
 
 func (j *ValidateJSONData) initialize(data map[string]interface{}) {
-	j.config = data
+	var c []map[interface{}]interface{}
+	for _, v := range data["keys"].([]interface{}) {
+		c = append(c, v.(map[interface{}]interface{}))
+	}
+	j.config = c
 }
 
 func (j *ValidateJSONData) validate(endpoint *Endpoint, response *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
@@ -120,8 +124,10 @@ func (j *ValidateJSONData) validate(endpoint *Endpoint, response *EndpointResult
 	}
 
 	var errors []string
-	for k, v := range j.config {
-		errors = append(errors, j.naviagateTree(strings.Split(k, "."), 0, v.(string), jsonData)...)
+	for _, av := range j.config {
+		for k, v := range av {
+			errors = append(errors, j.naviagateTree(strings.Split(k.(string), "."), 0, v.(string), jsonData)...)
+		}
 	}
 
 	res.Errors = errors

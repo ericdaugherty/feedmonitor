@@ -25,6 +25,7 @@ func validate(t *testing.T, j *ValidateJSONData, keys []string, command string, 
 
 }
 
+// TestValidateJSONDataValidateValueWithBool Tests the ValidateJSONData.validateValues method with booleans.
 func TestValidateJSONDataValidateValueWithBool(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -41,6 +42,7 @@ func TestValidateJSONDataValidateValueWithBool(t *testing.T) {
 	validate(t, j, keys, "type array", false, false)
 }
 
+// TestValidateJSONDataValidateValueWithNumber Tests the ValidateJSONData.validateValues method with numbers.
 func TestValidateJSONDataValidateValueWithNumber(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -70,6 +72,7 @@ func TestValidateJSONDataValidateValueWithNumber(t *testing.T) {
 	validate(t, j, keys, "type array", 3.65, false)
 }
 
+// TestValidateJSONDataValidateValueWithString Tests the ValidateJSONData.validateValues method with strings.
 func TestValidateJSONDataValidateValueWithString(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -87,6 +90,7 @@ func TestValidateJSONDataValidateValueWithString(t *testing.T) {
 	validate(t, j, keys, "type array", "test", false)
 }
 
+// TestValidateJSONDataValidateValueWithArray Tests the ValidateJSONData.validateValues method with arrays.
 func TestValidateJSONDataValidateValueWithArray(t *testing.T) {
 
 	j := &ValidateJSONData{}
