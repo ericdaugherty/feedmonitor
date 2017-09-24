@@ -111,7 +111,7 @@ func (j *ValidateJSONData) initialize(data map[string]interface{}) {
 
 func (j *ValidateJSONData) validate(endpoint *Endpoint, response *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{Name: "json"}
+	res := ValidationResult{Name: "jsondata"}
 
 	var jsonData interface{}
 	jsonData, ok := data["data"]

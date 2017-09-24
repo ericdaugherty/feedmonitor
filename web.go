@@ -41,6 +41,7 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	r.Handle("/css/{rest}", http.StripPrefix("/css/", http.FileServer(http.Dir("web/css"))))
 	r.HandleFunc("/app/{app}/", appHome)
 	r.HandleFunc("/app/{app}/{endpoint}/", endpointHome)
+	r.HandleFunc("/app/{app}/{endpoint}/result", endpointResult)
 	r.HandleFunc("/app/{app}/{endpoint}/results", endpointResults)
 	r.HandleFunc("/app/{app}/{endpoint}/performance", endpointPerformance)
 	r.HandleFunc("/app/{app}/{endpoint}/replay", endpointReplay)
@@ -141,19 +142,68 @@ func endpointHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recentResults, _ := GetLastNEndpointResult(app.Key, endpoint.Key, endpoint.URL, 10)
+	templateData := make(map[string]interface{})
+	urls := []string{}
+	recentResults := make(map[string][]EndpointResult)
+	templateData["Application"] = app
+	templateData["Endpoint"] = endpoint
+
+	if endpoint.Dynamic {
+		for _, url := range endpoint.CurrentURLs {
+			urls = append(urls, url)
+			res, _ := GetLastNEndpointResult(app.Key, endpoint.Key, url, 10)
+			if res != nil {
+				recentResults[url] = res
+			}
+		}
+	} else {
+		urls = append(urls, endpoint.URL)
+		recentResults[endpoint.URL], _ = GetLastNEndpointResult(app.Key, endpoint.Key, endpoint.URL, 10)
+	}
+
+	templateData["URLS"] = urls
+	templateData["Results"] = recentResults
+
+	renderTemplate(w, r, "endpointHome", templateData)
+}
+
+func endpointResult(w http.ResponseWriter, r *http.Request) {
+	found, app, endpoint := getAppEndpoint(w, r)
+	if !found {
+		notFoundHandler(w, r)
+		return
+	}
+
+	date, ok := getDate(r, time.RFC3339)
+	if !ok {
+		notFoundHandler(w, r)
+		return
+	}
+
+	url := getURL(endpoint, r)
+
+	epr, err := GetEndpointResult(app.Key, endpoint.Key, url, date)
+	if err != nil {
+		errorHandler(w, r, err.Error())
+		return
+	} else if epr == nil {
+		notFoundHandler(w, r)
+		return
+	}
 
 	args := struct {
-		Application   *Application
-		Endpoint      *Endpoint
-		RecentResults []EndpointResult
+		Application *Application
+		Endpoint    *Endpoint
+		URL         string
+		Result      *EndpointResult
 	}{
 		app,
 		endpoint,
-		recentResults,
+		url,
+		epr,
 	}
 
-	renderTemplate(w, r, "endpointHome", args)
+	renderTemplate(w, r, "endpointResult", args)
 }
 
 func endpointResults(w http.ResponseWriter, r *http.Request) {
@@ -164,8 +214,8 @@ func endpointResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := getURL(endpoint, r)
-	dv, date := getDate(r, "2006-01-02")
-	if !dv {
+	date, ok := getDate(r, "2006-01-02")
+	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
@@ -201,8 +251,8 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := getURL(endpoint, r)
-	dv, date := getDate(r, "2006-01-02")
-	if !dv {
+	date, ok := getDate(r, "2006-01-02")
+	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
@@ -244,8 +294,8 @@ func endpointReplay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := getURL(endpoint, r)
-	dv, date := getDate(r, time.RFC3339)
-	if !dv {
+	date, ok := getDate(r, time.RFC3339)
+	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
@@ -272,8 +322,8 @@ func endpointDiff(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := getURL(endpoint, r)
-	dv, date := getDate(r, time.RFC3339)
-	if !dv {
+	date, ok := getDate(r, time.RFC3339)
+	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
@@ -384,30 +434,31 @@ func getAppEndpoint(w http.ResponseWriter, r *http.Request) (bool, *Application,
 }
 
 func getURL(e *Endpoint, r *http.Request) string {
-	if e.Dynamic {
-		return r.URL.Query().Get("feed")
+	url := r.URL.Query().Get("feed")
+	if url == "" && !e.Dynamic {
+		url = e.URL
 	}
-	return e.URL
+	return url
 }
 
-func getDate(r *http.Request, format string) (bool, time.Time) {
+func getDate(r *http.Request, format string) (time.Time, bool) {
 	return getDateFromField(r, format, "date")
 }
 
-func getDateFromField(r *http.Request, format string, dateField string) (bool, time.Time) {
+func getDateFromField(r *http.Request, format string, dateField string) (time.Time, bool) {
 	dateArg := r.URL.Query().Get(dateField)
 	var date time.Time
 	if strings.EqualFold(strings.TrimSpace(dateArg), "today") {
-		return true, time.Now()
+		return time.Now(), true
 	}
 
 	var err error
 	date, err = time.Parse(format, dateArg)
 	if err != nil {
 		log.Errorf("Error parsing date: %v", err.Error())
-		return false, time.Now()
+		return time.Now(), false
 	}
-	return true, date
+	return date, true
 }
 
 func buildGraphMapString(perfRecs []PerformanceEntryResult) (result string) {

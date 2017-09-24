@@ -1,0 +1,40 @@
+<html>
+
+<head>
+</head>
+<body>
+<div><a href="../../../../">Home</a> - <a href="../">{{.Application.Name}}</a> - <a href=".">{{.Endpoint.Name}}</a></div>
+
+<h1>{{.Application.Name}}</h1>
+<h2>{{.Endpoint.Name}}</h2>
+<h2><a href="{{.URL}}">{{.URL}}</a></h2>
+<h2>Check Time: {{.Result.CheckTime.Format "2006-01-02 15:04:05 MST"}}</h2>
+
+<ul>
+<li>Status: {{.Result.Status}}</li>
+<li>Size: {{Bytes .Result.Size}} ({{Comma .Result.Size}})B</li>
+<li>Duration: {{Comma (FormatDuration .Result.Duration)}}ms</li>
+<li>Body Changed?: {{.Result.BodyChanged}}  {{ if .Result.BodyChanged }} <a href="./diff?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.URL}}">View Diff</a> {{end}}</li>
+<li>Valid? {{.Result.Valid}}</li>
+</ul>
+
+<h3>Validation Results</h3>
+<div>Validators:
+<ul>
+{{range .Result.ValidationResults}}
+<li>Name: {{.Name}} Valid: {{.Valid}}
+<ul>
+{{range .Errors}}<li>{{.}}</li>{{end}}
+</ul>
+</li>
+{{end}}
+</ul>
+</div>
+
+<div>
+<a href="./replay?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.URL}}">Replay</a>
+</div>
+
+
+</body>
+</html>
