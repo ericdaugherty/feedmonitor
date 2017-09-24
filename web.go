@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -91,12 +92,23 @@ func initTemplates() {
 		webLog.Fatal("Error initializing HTML Templates", err)
 	}
 
+	funcMap := template.FuncMap{
+		"FormatDuration": formatDuration,
+		"Comma":          humanize.Comma,
+		"Bytes":          func(b int64) string { return humanize.Bytes(uint64(b)) },
+	}
+	_ = uint64(34)
 	webLog.Debugf("Loading %d templates from %v", len(templatePaths), templatesDir)
 
 	for _, filePath := range templatePaths {
 		name := strings.TrimSuffix(path.Base(filePath), ".tmpl")
-		templates[name] = template.Must(template.ParseFiles(filePath))
+		t := template.New(name).Funcs(funcMap)
+		templates[name] = template.Must(t.ParseFiles(filePath))
 	}
+}
+
+func formatDuration(d time.Duration) int64 {
+	return int64(d / time.Millisecond)
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
