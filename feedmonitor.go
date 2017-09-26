@@ -143,14 +143,14 @@ func startFeedMonitor(ctx context.Context, cancelHelpers context.CancelFunc) {
 		log.Debug("Started Feed Checker.")
 		defer cancelHelpers()
 
+		var data = make(map[string]interface{})
 		for {
 			select {
 			case <-ticker.C:
-				var data = make(map[string]interface{})
 				for _, app := range applications {
 					for _, e := range app.Endpoints {
 						if shutdown {
-							log.Debug("Shutting down Feed Checker. BY BOOL")
+							log.Debug("Shutting down Feed Checker.")
 							return
 						}
 						if e.shouldCheckNow() {
@@ -164,7 +164,7 @@ func startFeedMonitor(ctx context.Context, cancelHelpers context.CancelFunc) {
 									fetchEndpoint(app, e, url)
 								}
 							} else {
-								data[e.Name], _ = fetchEndpoint(app, e, e.URL)
+								data[e.Key], _ = fetchEndpoint(app, e, e.URL)
 							}
 						}
 					}
