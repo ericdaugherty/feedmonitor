@@ -8,22 +8,17 @@ import (
 
 // HipChatNotifer sends notifications to HipChat.
 type HipChatNotifer struct {
-	Client       *hipchat.Client
-	Room         string
-	AlwaysNotify bool
+	Client *hipchat.Client
+	Room   string
 }
 
 func (h *HipChatNotifer) initialize(data map[string]interface{}) {
 	apiKey := data["apikey"].(string)
 	h.Client = hipchat.NewClient(apiKey)
 	h.Room = data["room"].(string)
-	h.AlwaysNotify = data["alwaysnotify"].(bool)
 }
 
 func (h *HipChatNotifer) notify(n *Notification) {
-	if !h.AlwaysNotify && n.EndpointResult.Valid() {
-		return
-	}
 
 	var message string
 	var color hipchat.Color

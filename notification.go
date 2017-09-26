@@ -26,8 +26,10 @@ func StartNotificationHandler(ctx context.Context, wg *sync.WaitGroup) chan *Not
 		for {
 			select {
 			case nf := <-n:
-				for _, nh := range nf.Endpoint.Notifiers {
-					nh.notify(nf)
+				if shouldNotify(nf) {
+					for _, nh := range nf.Endpoint.Notifiers {
+						nh.notify(nf)
+					}
 				}
 			case <-ctx.Done():
 				log.Debug("Shutting down Notification Handler.")
@@ -37,4 +39,19 @@ func StartNotificationHandler(ctx context.Context, wg *sync.WaitGroup) chan *Not
 	}()
 
 	return n
+}
+
+func shouldNotify(n *Notification) bool {
+
+	prevEpr, _ := GetEndpointResultPrev(n.EndpointResult.AppKey, n.EndpointResult.EndpointKey, n.EndpointResult.URL, n.EndpointResult.CheckTime)
+
+	if !n.EndpointResult.Valid() && (prevEpr == nil || prevEpr.Valid()) {
+		return true
+	}
+
+	if n.EndpointResult.Valid() && (prevEpr != nil && !prevEpr.Valid()) {
+		return true
+	}
+
+	return false
 }
