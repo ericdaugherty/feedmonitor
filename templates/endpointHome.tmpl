@@ -30,7 +30,7 @@
 <li><a href="result?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">{{.CheckTime.Format "2006-01-02 15:04:05 MST"}}</a> {{Comma (FormatDuration .Duration)}}ms - {{Bytes .Size}} ({{Comma .Size}})B - Body Changed? {{.BodyChanged}} {{ if .BodyChanged }} <a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">diff</a> {{end}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">Replay</a></li>
 {{end}}
 </ul>
-<a href="./results?date=today">View All Results</a>
+<a href="./results?date=today&feed={{$url}}">View All Results</a>
 </div>
 {{end}}
 </body>
