@@ -105,13 +105,13 @@ type Endpoint struct {
 
 // Notifier defines the interface that feed result notifiers need to implement.
 type Notifier interface {
-	initialize(map[string]interface{})
+	initialize(string, map[string]interface{})
 	notify(*Notification)
 }
 
 // Validator defines the interface that feed result validators need to implement.
 type Validator interface {
-	initialize(map[string]interface{})
+	initialize(string, map[string]interface{})
 	validate(*Endpoint, *EndpointResult, map[string]interface{}) (bool, *ValidationResult)
 }
 
@@ -254,7 +254,7 @@ func (c *Configuration) initializeApplication(file string) *Application {
 		if !ok {
 			log.Fatalf("Unknown Notifier type %v", e.Type)
 		}
-		n.initialize(e.Config)
+		n.initialize(e.Name, e.Config)
 		notifiers[e.Key] = n
 		if e.Default {
 			defaultNotifiers = append(defaultNotifiers, n)
@@ -269,7 +269,7 @@ func (c *Configuration) initializeApplication(file string) *Application {
 		if !ok {
 			log.Fatalf("Unknown Validator type %v", e.Type)
 		}
-		v.initialize(e.Config)
+		v.initialize(e.Name, e.Config)
 		validators[e.Key] = v
 		if e.Default {
 			defaultValidators = append(defaultValidators, v)

@@ -24,7 +24,7 @@ func TestValidateJSONDataMissingKeySimple(t *testing.T) {
 	config := make(map[string]interface{})
 	config["keys"] = keys
 
-	j.initialize(config)
+	j.initialize("Test Validator", config)
 
 	endpoint := &Endpoint{Name: "Test Endpoint"}
 	endpointResult := &EndpointResult{}
@@ -57,7 +57,7 @@ func TestValidateJSONDataMissingKeyComplex(t *testing.T) {
 	config := make(map[string]interface{})
 	config["keys"] = keys
 
-	j.initialize(config)
+	j.initialize("Test Validator", config)
 
 	endpoint := &Endpoint{Name: "Test Endpoint"}
 	endpointResult := &EndpointResult{}
@@ -90,7 +90,7 @@ func TestValidateJSONDataBaseArray(t *testing.T) {
 	config := make(map[string]interface{})
 	config["keys"] = keys
 
-	j.initialize(config)
+	j.initialize("Test Validator", config)
 
 	endpoint := &Endpoint{Name: "Test Endpoint"}
 	endpointResult := &EndpointResult{}
@@ -123,7 +123,7 @@ func TestValidateJSONDataArrayIndex(t *testing.T) {
 	config := make(map[string]interface{})
 	config["keys"] = keys
 
-	j.initialize(config)
+	j.initialize("Test Validator", config)
 
 	endpoint := &Endpoint{Name: "Test Endpoint"}
 	endpointResult := &EndpointResult{}
@@ -156,7 +156,7 @@ func TestValidateJSONDataOptionalKey(t *testing.T) {
 	config := make(map[string]interface{})
 	config["keys"] = keys
 
-	j.initialize(config)
+	j.initialize("Test Validator", config)
 
 	endpoint := &Endpoint{Name: "Test Endpoint"}
 	endpointResult := &EndpointResult{}

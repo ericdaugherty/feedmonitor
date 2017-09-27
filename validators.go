@@ -11,10 +11,12 @@ import (
 
 // ValidateStatus validates that the HTTP Status code is one of a set of expected values.
 type ValidateStatus struct {
+	Name             string
 	ValidStatusCodes []int
 }
 
-func (v *ValidateStatus) initialize(data map[string]interface{}) {
+func (v *ValidateStatus) initialize(name string, data map[string]interface{}) {
+	v.Name = name
 	s := data["status"]
 	switch ts := s.(type) {
 	case int:
@@ -30,7 +32,7 @@ func (v *ValidateStatus) initialize(data map[string]interface{}) {
 
 func (v *ValidateStatus) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{Name: "Status"}
+	res := ValidationResult{Name: v.Name}
 
 	for _, status := range v.ValidStatusCodes {
 		if er.Status == status {
@@ -47,18 +49,20 @@ func (v *ValidateStatus) validate(e *Endpoint, er *EndpointResult, data map[stri
 
 // ValidateSize validates the size of the result returned.
 type ValidateSize struct {
+	Name        string
 	MinimumSize int64
 	MaximumSize int64
 }
 
-func (v *ValidateSize) initialize(data map[string]interface{}) {
+func (v *ValidateSize) initialize(name string, data map[string]interface{}) {
+	v.Name = name
 	v.MinimumSize = int64(data["minsize"].(int))
 	v.MaximumSize = int64(data["maxsize"].(int))
 }
 
 func (v *ValidateSize) validate(e *Endpoint, er *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{Name: "Size"}
+	res := ValidationResult{Name: v.Name}
 
 	res.Valid = true
 	if v.MinimumSize > 0 && er.Size < v.MinimumSize {
@@ -75,14 +79,16 @@ func (v *ValidateSize) validate(e *Endpoint, er *EndpointResult, data map[string
 
 // ValidateJSON provides validation of JSON files.
 type ValidateJSON struct {
+	Name string
 }
 
-func (j *ValidateJSON) initialize(data map[string]interface{}) {
+func (j *ValidateJSON) initialize(name string, data map[string]interface{}) {
+	j.Name = name
 }
 
 func (j *ValidateJSON) validate(endpoint *Endpoint, response *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{Name: "json"}
+	res := ValidationResult{Name: j.Name}
 
 	var jsonData interface{}
 	err := json.Unmarshal(response.Body, &jsonData)
@@ -99,11 +105,13 @@ func (j *ValidateJSON) validate(endpoint *Endpoint, response *EndpointResult, da
 
 // ValidateJSONData provides validation of specific values in JSON files.
 type ValidateJSONData struct {
+	Name       string
 	config     []map[interface{}]interface{}
 	arrayRegex *regexp.Regexp
 }
 
-func (j *ValidateJSONData) initialize(data map[string]interface{}) {
+func (j *ValidateJSONData) initialize(name string, data map[string]interface{}) {
+	j.Name = name
 	var c []map[interface{}]interface{}
 	for _, v := range data["keys"].([]interface{}) {
 		c = append(c, v.(map[interface{}]interface{}))
@@ -115,7 +123,7 @@ func (j *ValidateJSONData) initialize(data map[string]interface{}) {
 
 func (j *ValidateJSONData) validate(endpoint *Endpoint, response *EndpointResult, data map[string]interface{}) (bool, *ValidationResult) {
 
-	res := ValidationResult{Name: "jsondata"}
+	res := ValidationResult{Name: j.Name}
 
 	var jsonData interface{}
 	jsonData, ok := data["data"]

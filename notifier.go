@@ -9,9 +9,11 @@ import (
 
 // StandardErrorNotifier sends notifications to standard err (console).
 type StandardErrorNotifier struct {
+	Name string
 }
 
-func (s *StandardErrorNotifier) initialize(data map[string]interface{}) {
+func (s *StandardErrorNotifier) initialize(name string, data map[string]interface{}) {
+	s.Name = name
 }
 
 func (s *StandardErrorNotifier) notify(n *Notification) {
@@ -35,11 +37,13 @@ func (s *StandardErrorNotifier) notify(n *Notification) {
 
 // HipChatNotifer sends notifications to HipChat.
 type HipChatNotifer struct {
+	Name   string
 	Client *hipchat.Client
 	Room   string
 }
 
-func (h *HipChatNotifer) initialize(data map[string]interface{}) {
+func (h *HipChatNotifer) initialize(name string, data map[string]interface{}) {
+	h.Name = name
 	apiKey := data["apikey"].(string)
 	h.Client = hipchat.NewClient(apiKey)
 	h.Room = data["room"].(string)
