@@ -141,6 +141,45 @@ func TestValidateJSONDataArrayIndex(t *testing.T) {
 	}
 }
 
+func TestValidateJSONDataOptionalKey(t *testing.T) {
+
+	j := &ValidateJSONData{}
+
+	key1 := map[interface{}]interface{}{
+		"key1": "?< 10",
+	}
+
+	keys := []interface{}{
+		key1,
+	}
+
+	config := make(map[string]interface{})
+	config["keys"] = keys
+
+	j.initialize(config)
+
+	endpoint := &Endpoint{Name: "Test Endpoint"}
+	endpointResult := &EndpointResult{}
+	endpointResult.Body = []byte(`{"key1":12}`)
+
+	_, res := j.validate(endpoint, endpointResult, nil)
+	if res.Valid {
+		t.Errorf("Invalid data sent to ValidateJSONData but didn't recieve an error for data: %v", string(endpointResult.Body))
+	}
+
+	endpointResult.Body = []byte(`{"key1":9}`)
+	_, res = j.validate(endpoint, endpointResult, nil)
+	if !res.Valid {
+		t.Errorf("Valid data sent to ValidateJSONData but recieved an error for data: %v with errors: %v", string(endpointResult.Body), res.Errors)
+	}
+
+	endpointResult.Body = []byte(`{"key2":4}`)
+	_, res = j.validate(endpoint, endpointResult, nil)
+	if !res.Valid {
+		t.Errorf("Valid data sent to ValidateJSONData but recieved an error for data: %v with errors: %v", string(endpointResult.Body), res.Errors)
+	}
+}
+
 func TestValidateJSONDataValidateValueWithBool(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -151,10 +190,12 @@ func TestValidateJSONDataValidateValueWithBool(t *testing.T) {
 	validate(t, j, keys, "= true", false, false)
 	validate(t, j, keys, "= false", false, true)
 	validate(t, j, keys, "= false", true, false)
+	validate(t, j, keys, "?= true", true, true)
 	validate(t, j, keys, "type bool", true, true)
 	validate(t, j, keys, "type string", true, false)
 	validate(t, j, keys, "type number", false, false)
 	validate(t, j, keys, "type array", false, false)
+	validate(t, j, keys, "?type bool", true, true)
 }
 
 func TestValidateJSONDataValidateValueWithNumber(t *testing.T) {
@@ -165,6 +206,7 @@ func TestValidateJSONDataValidateValueWithNumber(t *testing.T) {
 
 	validate(t, j, keys, "= 3.65", 3.65, true)
 	validate(t, j, keys, "= 3.65", 3.6, false)
+	validate(t, j, keys, "?= 3.65", 3.65, true)
 	validate(t, j, keys, "!= 3.65", 3.64, true)
 	validate(t, j, keys, "!= 3.65", 3.65, false)
 	validate(t, j, keys, "> 3.65", 3.66, true)
@@ -193,6 +235,7 @@ func TestValidateJSONDataValidateValueWithString(t *testing.T) {
 	keys := []string{"test", "key", "set"}
 
 	validate(t, j, keys, "= Test", "Test", true)
+	validate(t, j, keys, "?= Test", "Test", true)
 	validate(t, j, keys, "!= Test", "Test", false)
 	validate(t, j, keys, "= Test", "not Test", false)
 	validate(t, j, keys, "!= Test", "not Test", true)
@@ -232,6 +275,7 @@ func TestValidateJSONDataValidateValueWithArray(t *testing.T) {
 
 	validate(t, j, keys, "len= 3", a, true)
 	validate(t, j, keys, "len= 4", a, false)
+	validate(t, j, keys, "?len= 3", a, true)
 	validate(t, j, keys, "len!= 3", a, false)
 	validate(t, j, keys, "len!= 4", a, true)
 	validate(t, j, keys, "len> 2", a, true)

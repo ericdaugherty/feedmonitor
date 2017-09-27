@@ -146,6 +146,8 @@ func (j *ValidateJSONData) naviagateTree(keys []string, keyIndex int, command st
 
 	var errors []string
 
+	optional := strings.HasPrefix(command, "?")
+
 	if len(keys) <= keyIndex || (len(keys) == 1 && keys[0] == "[]") {
 		res := j.validateValue(keys, command, json)
 		if len(res) > 0 {
@@ -188,7 +190,9 @@ func (j *ValidateJSONData) naviagateTree(keys []string, keyIndex int, command st
 		}
 		v1, ok := v[keys[keyIndex]]
 		if !ok {
-			errors = append(errors, fmt.Sprintf("Key element %v not found in JSON.", keys[keyIndex]))
+			if !optional {
+				errors = append(errors, fmt.Sprintf("Key element %v not found in JSON.", keys[keyIndex]))
+			}
 			return errors
 		}
 		errors := j.naviagateTree(keys, keyIndex+1, command, v1)
@@ -201,6 +205,11 @@ func (j *ValidateJSONData) naviagateTree(keys []string, keyIndex int, command st
 func (j *ValidateJSONData) validateValue(keys []string, command string, value interface{}) string {
 
 	key := strings.Join(keys, ".")
+
+	optional := strings.HasPrefix(command, "?")
+	if optional {
+		command = strings.TrimPrefix(command, "?")
+	}
 
 	c1 := strings.SplitN(command, " ", 2)
 	if len(c1) != 2 {
