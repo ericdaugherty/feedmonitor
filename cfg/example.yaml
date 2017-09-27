@@ -38,7 +38,7 @@ validators:
        - "[].title": "type string" # Validate that each title is a string.
        - "[0].userId": "= 1" #Validate that the userId value in the first object is equal to 1.
        - "[99].id": "= 100" #Validate that the id value in the last object is equal to 100.
-
+       - "[].notAKey": "?= 100" #Validate only if the key is present, ignore if not.
 # Set of Endpoints to monitor
 endpoints:
  - key: posts
