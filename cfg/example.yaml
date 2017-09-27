@@ -1,0 +1,104 @@
+#
+# FeedMonitor Sample Configuration File
+#
+# Sample Feeds provided by https://jsonplaceholder.typicode.com/
+
+# The key is used as the database key. Changing this key will result in a loss of data.
+key: EXAMPLE
+
+# Name displayed in the web application.
+name: "Example Test Feeds"
+
+# Define and configure the notification methods you wish to use.
+notifiers:
+  - key: stderr
+    name: Standard Error Notifier
+    type: stderr
+    config:
+
+# Define a set of validators to use to verify the feeds are correct. 
+# Validators be general and used on several feeds, or specific to an individual feed.
+validators:
+  - key: json
+    name: JSON Validator
+    type: JSON
+  - key: status
+    name: HTTP Status Validator
+    type: Status
+    config:
+      status: 
+       - 200
+  - key: postjson
+    name: JSON Validator for Post Feed
+    type: JSONData
+    config:
+      keys: 
+       - "[]": "= 100" # Validate that there are 100 items.
+       - "[].userId": "type number" # Validate that each userId is a number.
+
+# Set of Endpoints to monitor
+endpoints:
+ - key: posts
+   name: Sample Posts
+   url: https://jsonplaceholder.typicode.com/posts
+   method: GET
+   requestbody: ""
+   dynamic: no
+   checkinterval: 3
+   notifiers:
+    - stderr
+   validators:
+    - status
+    - json
+    - postjson
+ - key: comments
+   name: Sample Comments
+   url: https://jsonplaceholder.typicode.com/comments
+# method defaults to 'GET' and can be omitted
+  # method: GET 
+# requestbody can be omitted if no body is being sent with the request.
+  #  requestbody: ""
+# dyanamic defaults to false and can be omitted
+  #  dynamic: no
+   checkinterval: 3
+   notifiers:
+    - stderr
+   validators:
+    - status
+    - json
+ - key: albums
+   name: Sample Albums
+   url: https://jsonplaceholder.typicode.com/albums
+   checkinterval: 3
+   notifiers:
+    - stderr
+   validators:
+    - status
+    - json
+ - key: photos
+   name: Sample Photos
+   url: https://jsonplaceholder.typicode.com/photos
+   checkinterval: 3
+   notifiers:
+    - stderr
+   validators:
+    - status
+    - json
+ - key: todos
+   name: Sample TODO List
+   url: https://jsonplaceholder.typicode.com/todos
+   checkinterval: 3
+   notifiers:
+    - stderr
+   validators:
+    - status
+    - json
+ - key: users
+   name: Sample Users
+   url: https://jsonplaceholder.typicode.com/users
+   checkinterval: 3
+   notifiers:
+    - stderr
+   validators:
+    - status
+    - json

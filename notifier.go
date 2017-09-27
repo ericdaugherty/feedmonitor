@@ -2,9 +2,36 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/tbruyelle/hipchat-go/hipchat"
 )
+
+// StandardErrorNotifier sends notifications to standard err (console).
+type StandardErrorNotifier struct {
+}
+
+func (s *StandardErrorNotifier) initialize(data map[string]interface{}) {
+}
+
+func (s *StandardErrorNotifier) notify(n *Notification) {
+
+	var message string
+	if n.EndpointResult.Valid() {
+		message = fmt.Sprintf("Successfully checked %v feed %v at URL: %v in %v", n.Application.Name, n.Endpoint.Name, n.EndpointResult.URL, n.EndpointResult.Duration)
+	} else {
+		errors := ""
+		for _, vr := range n.EndpointResult.ValidationResults {
+			if !vr.Valid {
+				for _, e := range vr.Errors {
+					errors = fmt.Sprintf("%v%v\r\n", errors, e)
+				}
+			}
+		}
+		message = fmt.Sprintf("Validation error on %v feed name '%v' at URL: %v.\r\n Errors:\r\n%v\r\n", n.Application.Name, n.Endpoint.Name, n.EndpointResult.URL, errors)
+	}
+	fmt.Fprintf(os.Stderr, "Notification:\r\n%v\r\n", message)
+}
 
 // HipChatNotifer sends notifications to HipChat.
 type HipChatNotifer struct {

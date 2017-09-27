@@ -188,6 +188,8 @@ func (c *Configuration) initialize() {
 
 func (c *Configuration) initializeNotifier(vtype string) (Notifier, bool) {
 	switch vtype {
+	case "stderr":
+		return &StandardErrorNotifier{}, true
 	case "hipchat":
 		return &HipChatNotifer{}, true
 	default:
@@ -268,11 +270,16 @@ func (c *Configuration) initializeApplication(file string) *Application {
 	eps := make([]*Endpoint, len(a.Endpoints))
 	for i, e := range a.Endpoints {
 
+		method := "GET"
+		if e.Method != "" {
+			method = e.Method
+		}
+
 		ep := &Endpoint{
 			Key:              e.Key,
 			Name:             e.Name,
 			URL:              e.URL,
-			Method:           e.Method,
+			Method:           method,
 			RequestBody:      e.RequestBody,
 			Dynamic:          e.Dynamic,
 			CheckIntervalMin: e.CheckInterval,
