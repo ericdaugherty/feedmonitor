@@ -14,6 +14,7 @@ notifiers:
   - key: stderr
     name: Standard Error Notifier
     type: stderr
+    default: true # If default: true. This notifier will be applied to ALL endpoints automatically.
     config:
 
 # Define a set of validators to use to verify the feeds are correct. 
@@ -22,9 +23,11 @@ validators:
   - key: json
     name: JSON Validator
     type: JSON
+    default: true # If default: true. This validator will be applied to ALL endpoints automatically.
   - key: status
     name: HTTP Status Validator
     type: Status
+    default: true
     config:
       status: 
        - 200
@@ -49,10 +52,8 @@ endpoints:
    dynamic: no
    checkinterval: 3
    notifiers:
-    - stderr
+    - stderr # Since stderr is defined as a default notifier and specified on the endpoint, this endpoint will get notifications twice
    validators:
-    - status
-    - json
     - postjson
  - key: comments
    name: Sample Comments
@@ -64,44 +65,19 @@ endpoints:
 # dyanamic defaults to false and can be omitted
   #  dynamic: no
    checkinterval: 3
-   notifiers:
-    - stderr
-   validators:
-    - status
-    - json
  - key: albums
    name: Sample Albums
    url: https://jsonplaceholder.typicode.com/albums
    checkinterval: 3
-   notifiers:
-    - stderr
-   validators:
-    - status
-    - json
  - key: photos
    name: Sample Photos
    url: https://jsonplaceholder.typicode.com/photos
    checkinterval: 3
-   notifiers:
-    - stderr
-   validators:
-    - status
-    - json
  - key: todos
    name: Sample TODO List
    url: https://jsonplaceholder.typicode.com/todos
    checkinterval: 3
-   notifiers:
-    - stderr
-   validators:
-    - status
-    - json
  - key: users
    name: Sample Users
    url: https://jsonplaceholder.typicode.com/users
    checkinterval: 3
-   notifiers:
-    - stderr
-   validators:
-    - status
-    - json
