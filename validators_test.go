@@ -80,7 +80,7 @@ func TestValidateJSONDataBaseArray(t *testing.T) {
 	j := &ValidateJSONData{}
 
 	key1 := map[interface{}]interface{}{
-		"[]": "= 2",
+		"[]": "len= 2",
 	}
 
 	keys := []interface{}{
@@ -102,6 +102,39 @@ func TestValidateJSONDataBaseArray(t *testing.T) {
 	}
 
 	endpointResult.Body = []byte(`[{"key1":4},{"key1":5}]`)
+	_, res = j.validate(endpoint, endpointResult, nil)
+	if !res.Valid {
+		t.Errorf("Valid data sent to ValidateJSONData but recieved an error for data: %v with errors: %v", string(endpointResult.Body), res.Errors)
+	}
+}
+
+func TestValidateJSONDataArrayIndex(t *testing.T) {
+
+	j := &ValidateJSONData{}
+
+	key1 := map[interface{}]interface{}{
+		"stuff.[1].innerId": "= 20",
+	}
+
+	keys := []interface{}{
+		key1,
+	}
+
+	config := make(map[string]interface{})
+	config["keys"] = keys
+
+	j.initialize(config)
+
+	endpoint := &Endpoint{Name: "Test Endpoint"}
+	endpointResult := &EndpointResult{}
+	endpointResult.Body = []byte(`{"id": 4,"stuff": [{"innerId": 10},{"innerId": 25}]}`)
+
+	_, res := j.validate(endpoint, endpointResult, nil)
+	if res.Valid {
+		t.Errorf("Invalid data sent to ValidateJSONData but didn't recieve an error for data: %v", string(endpointResult.Body))
+	}
+
+	endpointResult.Body = []byte(`{"id": 4,"stuff": [{"innerId": 10},{"innerId": 20}]}`)
 	_, res = j.validate(endpoint, endpointResult, nil)
 	if !res.Valid {
 		t.Errorf("Valid data sent to ValidateJSONData but recieved an error for data: %v with errors: %v", string(endpointResult.Body), res.Errors)
@@ -163,6 +196,22 @@ func TestValidateJSONDataValidateValueWithString(t *testing.T) {
 	validate(t, j, keys, "!= Test", "Test", false)
 	validate(t, j, keys, "= Test", "not Test", false)
 	validate(t, j, keys, "!= Test", "not Test", true)
+	validate(t, j, keys, "len= 4", "test", true)
+	validate(t, j, keys, "len= 5", "test", false)
+	validate(t, j, keys, "len!= 3", "test", true)
+	validate(t, j, keys, "len!= 4", "test", false)
+	validate(t, j, keys, "len> 3", "test", true)
+	validate(t, j, keys, "len> 4", "test", false)
+	validate(t, j, keys, "len> 5", "test", false)
+	validate(t, j, keys, "len>= 3", "test", true)
+	validate(t, j, keys, "len>= 4", "test", true)
+	validate(t, j, keys, "len>= 5", "test", false)
+	validate(t, j, keys, "len< 5", "test", true)
+	validate(t, j, keys, "len< 4", "test", false)
+	validate(t, j, keys, "len< 3", "test", false)
+	validate(t, j, keys, "len<= 5", "test", true)
+	validate(t, j, keys, "len<= 4", "test", true)
+	validate(t, j, keys, "len<= 3", "test", false)
 
 	validate(t, j, keys, "type bool", "test", false)
 	validate(t, j, keys, "type string", "test", true)
@@ -174,32 +223,33 @@ func TestValidateJSONDataValidateValueWithArray(t *testing.T) {
 
 	j := &ValidateJSONData{}
 
-	keys := []string{"test", "key", "set"}
+	keys := []string{"x"}
 
 	a := make([]interface{}, 3)
 	a[0] = "test"
 	a[1] = "key"
 	a[2] = "set"
 
-	validate(t, j, keys, "= 3", a, true)
-	validate(t, j, keys, "= 4", a, false)
-	validate(t, j, keys, "!= 3", a, false)
-	validate(t, j, keys, "!= 4", a, true)
-	validate(t, j, keys, "> 2", a, true)
-	validate(t, j, keys, "> 3", a, false)
-	validate(t, j, keys, ">= 2", a, true)
-	validate(t, j, keys, ">= 3", a, true)
-	validate(t, j, keys, ">= 4", a, false)
-	validate(t, j, keys, "< 4", a, true)
-	validate(t, j, keys, "< 3", a, false)
-	validate(t, j, keys, "<= 4", a, true)
-	validate(t, j, keys, "<= 3", a, true)
-	validate(t, j, keys, "<= 2", a, false)
+	validate(t, j, keys, "len= 3", a, true)
+	validate(t, j, keys, "len= 4", a, false)
+	validate(t, j, keys, "len!= 3", a, false)
+	validate(t, j, keys, "len!= 4", a, true)
+	validate(t, j, keys, "len> 2", a, true)
+	validate(t, j, keys, "len> 3", a, false)
+	validate(t, j, keys, "len>= 2", a, true)
+	validate(t, j, keys, "len>= 3", a, true)
+	validate(t, j, keys, "len>= 4", a, false)
+	validate(t, j, keys, "len< 4", a, true)
+	validate(t, j, keys, "len< 3", a, false)
+	validate(t, j, keys, "len<= 4", a, true)
+	validate(t, j, keys, "len<= 3", a, true)
+	validate(t, j, keys, "len<= 2", a, false)
 
 	validate(t, j, keys, "type bool", a, false)
 	validate(t, j, keys, "type string", a, false)
 	validate(t, j, keys, "type number", a, false)
 	validate(t, j, keys, "type array", a, true)
+
 }
 
 func shouldBe(t *testing.T, res string, shouldBe bool) {

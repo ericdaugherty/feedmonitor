@@ -33,8 +33,11 @@ validators:
     type: JSONData
     config:
       keys: 
-       - "[]": "= 100" # Validate that there are 100 items.
+       - "[]": "len= 100" # Validate that there are 100 items.
        - "[].userId": "type number" # Validate that each userId is a number.
+       - "[].title": "type string" # Validate that each title is a string.
+       - "[0].userId": "= 1" #Validate that the userId value in the first object is equal to 1.
+       - "[99].id": "= 100" #Validate that the id value in the last object is equal to 100.
 
 # Set of Endpoints to monitor
 endpoints:
