@@ -80,11 +80,11 @@ function diffUsingJS(viewType) {
 <h2>{{.Application.Name}} - {{.Endpoint.Name}} - Diff</h2>
 
 
-	<div class="textInput">
+	<div class="textInput" style="display: none;">
 		<h2>Base Text</h2>
 		<textarea id="baseText">{{.OldBody}}</textarea>
 	</div>
-	<div class="textInput spacer">
+	<div class="textInput spacer" style="display: none;">
 		<h2>New Text</h2>
 		<textarea id="newText">{{.NewBody}}</textarea>
 	</div>
