@@ -142,7 +142,7 @@ func (j *ValidateJSONData) naviagateTree(keys []string, keyIndex int, command st
 
 	var errors []string
 
-	if len(keys) <= keyIndex {
+	if len(keys) <= keyIndex || (len(keys) == 1 && keys[0] == "[]") {
 		res := j.validateValue(keys, command, json)
 		if len(res) > 0 {
 			return []string{res}

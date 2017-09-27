@@ -32,7 +32,7 @@ func TestValidateJSONDataMissingKeySimple(t *testing.T) {
 
 	_, res := j.validate(endpoint, endpointResult, nil)
 	if res.Valid {
-		t.Errorf("Invalid data sent to ValidateJSONData but recieved an error for data: %v", string(endpointResult.Body))
+		t.Errorf("Invalid data sent to ValidateJSONData but didn't recieve an error for data: %v", string(endpointResult.Body))
 	}
 
 	endpointResult.Body = []byte(`{"key2": 9, "basekey": 3}`)
@@ -65,7 +65,7 @@ func TestValidateJSONDataMissingKeyComplex(t *testing.T) {
 
 	_, res := j.validate(endpoint, endpointResult, nil)
 	if res.Valid {
-		t.Errorf("Invalid data sent to ValidateJSONData but recieved an error for data: %v", string(endpointResult.Body))
+		t.Errorf("Invalid data sent to ValidateJSONData but didn't recieve an error for data: %v", string(endpointResult.Body))
 	}
 
 	endpointResult.Body = []byte(`[{"key1":4},{"key1":5}]`)
@@ -75,7 +75,39 @@ func TestValidateJSONDataMissingKeyComplex(t *testing.T) {
 	}
 }
 
-// TestValidateJSONDataValidateValueWithBool Tests the ValidateJSONData.validateValues method with booleans.
+func TestValidateJSONDataBaseArray(t *testing.T) {
+
+	j := &ValidateJSONData{}
+
+	key1 := map[interface{}]interface{}{
+		"[]": "= 2",
+	}
+
+	keys := []interface{}{
+		key1,
+	}
+
+	config := make(map[string]interface{})
+	config["keys"] = keys
+
+	j.initialize(config)
+
+	endpoint := &Endpoint{Name: "Test Endpoint"}
+	endpointResult := &EndpointResult{}
+	endpointResult.Body = []byte(`[{"test":4}, {"test":5}, {"test":6}]`)
+
+	_, res := j.validate(endpoint, endpointResult, nil)
+	if res.Valid {
+		t.Errorf("Invalid data sent to ValidateJSONData but didn't recieve an error for data: %v", string(endpointResult.Body))
+	}
+
+	endpointResult.Body = []byte(`[{"key1":4},{"key1":5}]`)
+	_, res = j.validate(endpoint, endpointResult, nil)
+	if !res.Valid {
+		t.Errorf("Valid data sent to ValidateJSONData but recieved an error for data: %v with errors: %v", string(endpointResult.Body), res.Errors)
+	}
+}
+
 func TestValidateJSONDataValidateValueWithBool(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -92,7 +124,6 @@ func TestValidateJSONDataValidateValueWithBool(t *testing.T) {
 	validate(t, j, keys, "type array", false, false)
 }
 
-// TestValidateJSONDataValidateValueWithNumber Tests the ValidateJSONData.validateValues method with numbers.
 func TestValidateJSONDataValidateValueWithNumber(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -122,7 +153,6 @@ func TestValidateJSONDataValidateValueWithNumber(t *testing.T) {
 	validate(t, j, keys, "type array", 3.65, false)
 }
 
-// TestValidateJSONDataValidateValueWithString Tests the ValidateJSONData.validateValues method with strings.
 func TestValidateJSONDataValidateValueWithString(t *testing.T) {
 
 	j := &ValidateJSONData{}
@@ -140,7 +170,6 @@ func TestValidateJSONDataValidateValueWithString(t *testing.T) {
 	validate(t, j, keys, "type array", "test", false)
 }
 
-// TestValidateJSONDataValidateValueWithArray Tests the ValidateJSONData.validateValues method with arrays.
 func TestValidateJSONDataValidateValueWithArray(t *testing.T) {
 
 	j := &ValidateJSONData{}
