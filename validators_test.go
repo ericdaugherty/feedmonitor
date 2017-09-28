@@ -297,7 +297,7 @@ func TestValidateJSONDataValidateValueWithArray(t *testing.T) {
 }
 
 func shouldBe(t *testing.T, res string, shouldBe bool) {
-
+	t.Helper()
 	if shouldBe && len(res) > 0 {
 		t.Error("Expected empty string, got", res)
 	} else if !shouldBe && len(res) == 0 {
@@ -306,7 +306,7 @@ func shouldBe(t *testing.T, res string, shouldBe bool) {
 }
 
 func validate(t *testing.T, j *ValidateJSONData, keys []string, command string, value interface{}, shouldPass bool) {
-
+	t.Helper()
 	res := j.validateValue(keys, command, value)
 	if shouldPass && len(res) > 0 {
 		t.Errorf("For Command '%v' and Value '%v' of type %v, expected empty string, got %v", command, value, reflect.TypeOf(value), res)
