@@ -43,7 +43,7 @@ func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error)
 	gitRepo = &GitRepo{AppKey: appKey, EndpointKey: endpointKey, URL: url, Directory: dir}
 
 	gitRepo.log = log.WithFields(logrus.Fields{"module": "git", "app": appKey, "endpoint": endpointKey, "url": url})
-	gitRepo.log.Debug("Creating new GitRepo")
+	gitRepo.log.Debug("Opening GitRepo")
 
 	r, err := openOrInitRepo(gitRepo.Directory)
 	if err != nil {

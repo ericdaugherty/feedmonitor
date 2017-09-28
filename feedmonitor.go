@@ -57,7 +57,8 @@ func main() {
 
 	helperContext, helperCancel := context.WithCancel(context.Background())
 
-	var wg sync.WaitGroup
+	var mainWg sync.WaitGroup
+	var helperWg sync.WaitGroup
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -66,13 +67,19 @@ func main() {
 		cancel()
 	}()
 
-	StartWebserver(ctx, &wg, log, configuration.WebPort)
+	StartWebserver(ctx, &helperWg, log, configuration.WebPort)
 
-	NotificationChannel = StartNotificationHandler(helperContext, &wg)
+	NotificationChannel = StartNotificationHandler(helperContext, &helperWg)
 
-	ResultLogChannel = StartResultWriter(helperContext, &wg)
+	ResultLogChannel = StartResultWriter(helperContext, &helperWg)
 
-	go startFeedMonitor(ctx, helperCancel)
+	if len(applications) == 0 {
+		log.Fatalf("No applications found. Exiting.")
+	}
+
+	for _, a := range applications {
+		go startFeedMonitor(ctx, &mainWg, a)
+	}
 
 	select {
 	case <-c:
@@ -81,13 +88,19 @@ func main() {
 		cancel()
 	case <-ctx.Done():
 		fmt.Println("Done")
-		return
 	}
 
-	if waitTimeout(&wg, 10*time.Second) {
-		log.Info("Shutdown after TIMEOUT.")
+	if waitTimeout(&mainWg, 10*time.Second) {
+		log.Info("App Threads Shutdown after TIMEOUT.")
 	} else {
-		log.Info("Shutdown Cleanly.")
+		log.Info("App Threads Shutdown Cleanly.")
+	}
+	helperCancel()
+
+	if waitTimeout(&helperWg, 10*time.Second) {
+		log.Info("Helper Threads Shutdown after TIMEOUT.")
+	} else {
+		log.Info("Helper Threads Shutdown Cleanly.")
 	}
 }
 
@@ -133,39 +146,42 @@ func initializeLogger() *logrus.Entry {
 	return logrus.WithFields(logrus.Fields{"module": "core"})
 }
 
-func startFeedMonitor(ctx context.Context, cancelHelpers context.CancelFunc) {
+func startFeedMonitor(ctx context.Context, wg *sync.WaitGroup, app *Application) {
 
-	log := log.WithField("module", "feedmonitor")
+	log := log.WithFields(logrus.Fields{
+		"module": "feedmonitor",
+		"app":    app.Key,
+	})
 
 	ticker := time.NewTicker(1 * time.Second)
 
 	go func() {
 		log.Debug("Started Feed Checker.")
-		defer cancelHelpers()
+
+		wg.Add(1)
+		defer wg.Done()
 
 		var data = make(map[string]interface{})
 		for {
 			select {
 			case <-ticker.C:
-				for _, app := range applications {
-					for _, e := range app.Endpoints {
-						if shutdown {
-							log.Debug("Shutting down Feed Checker.")
-							return
-						}
-						if e.shouldCheckNow() {
-							e.scheduleNextCheck()
-							if e.Dynamic {
-								urls, err := e.parseURLs(data)
-								if err != nil {
-									log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
-								}
-								for _, url := range urls {
-									fetchEndpoint(app, e, url)
-								}
-							} else {
-								data[e.Key], _ = fetchEndpoint(app, e, e.URL)
+				for _, e := range app.Endpoints {
+					if shutdown {
+						log.Debug("Shutting down Feed Checker.")
+						return
+					}
+					if e.shouldCheckNow() {
+						e.scheduleNextCheck()
+						if e.Dynamic {
+							urls, err := e.parseURLs(data)
+							if err != nil {
+								log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
 							}
+							for _, url := range urls {
+								fetchEndpoint(app, e, url)
+							}
+						} else {
+							data[e.Key], _ = fetchEndpoint(app, e, e.URL)
 						}
 					}
 				}
