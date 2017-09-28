@@ -40,7 +40,7 @@
                     <tr>
                         <td>Body</td>
                         {{if .Result.BodyChanged}}
-                        <td>Body Changed (<a href="./diff?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.FeedURL}}">View Diff</a>)</td>
+                        <td>Body Changed (<a target="_blank" href="./diff?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.FeedURL}}">View Diff</a>)</td>
                         {{else}}
                         <td>No Change</td>
                         {{end}}

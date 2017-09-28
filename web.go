@@ -319,6 +319,7 @@ func endpointReplay(w http.ResponseWriter, r *http.Request) {
 }
 
 func endpointDiff(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
 	found, app, endpoint := getAppEndpoint(w, r)
 	if !found {
 		notFoundHandler(w, r)
@@ -359,23 +360,14 @@ func endpointDiff(w http.ResponseWriter, r *http.Request) {
 	json.Indent(&oldPretty, oldEpr.Body, "", "  ")
 	json.Indent(&newPretty, epr.Body, "", "  ")
 
-	args := struct {
-		Application *Application
-		Endpoint    *Endpoint
-		OldResult   *EndpointResult
-		NewResult   *EndpointResult
-		OldBody     string
-		NewBody     string
-	}{
-		app,
-		endpoint,
-		epr,
-		epr,
-		string(oldPretty.Bytes()),
-		string(newPretty.Bytes()),
-	}
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
+	templateData["Application"] = app
+	templateData["Endpoint"] = endpoint
+	templateData["OldBody"] = string(oldPretty.Bytes())
+	templateData["NewBody"] = string(newPretty.Bytes())
 
-	renderTemplate(w, r, "endpointDiff", args)
+	renderTemplate(w, r, "endpointDiff", templateData)
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {

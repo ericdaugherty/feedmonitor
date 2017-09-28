@@ -87,7 +87,7 @@
                 <td>{{Comma (FormatDuration .Duration)}}ms</td>
                 <td>{{Bytes .Size}} ({{Comma .Size}})B</td>
                 {{if .BodyChanged}}
-                <td>Body Changed (<a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">View Diff</a>)</td>
+                <td>Body Changed (<a target="_blank" href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">View Diff</a>)</td>
                 {{else}}
                 <td>No Change</td>
                 {{end}}
