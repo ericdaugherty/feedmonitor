@@ -1,37 +1,112 @@
+{{define "title"}}FeedMonitor - {{.Application.Name}} - {{.Endpoint.Name}}{{end}}
+{{define "additionalHead"}}{{end}}
+{{define "relroot"}}../../../{{end}}
+<!DOCTYPE html>
 <html>
+{{template "head" .}}
+<body class="w3-light-grey">
 
-<head>
-</head>
-<body>
-<div><a href="../../../">Home</a> - <a href="../">{{.Application.Name}}</a></div>
-<h1>{{.Application.Name}}</h1>
-<h2>{{.Endpoint.Name}}</h2>
+{{template "navbar" .}}
 
-<div>Status: {{.Endpoint.CurrentStatus}}</div>
-<div>Validators:<ul>
-{{range .Endpoint.CurrentValidation}}
-<li>Name: {{.Name}} Valid: {{.Valid}}
-<ul>
-{{range .Errors}}<li>{{.}}</li>{{end}}
-</ul>
-</li>
-{{end}}
-</ul></div>
+{{template "sidenav" .}}
 
-{{ range .URLS }}
-<h2><a href="{{.}}">{{.}}</a></h2>
-<div><a href="./performance?date=today&feed={{.}}">View Performance Log</a></div>
-<div><a href="./results?date=today&feed={{.}}">View All Results</a></div>
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+    <!-- Header -->
+    <header class="w3-container" style="padding-top:22px">
+        <h5><b><i class="fa fa-dashboard"></i> {{.Application.Name}} - {{.Endpoint.Name}}</b></h5>
+    </header>
 
-<div>Recent Results:
-<ul>
-{{ $url := . }}
-{{range (index $.Results  .)}}
-<li><a href="result?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">{{.CheckTime.Format "2006-01-02 15:04:05 MST"}}</a> {{Comma (FormatDuration .Duration)}}ms - {{Bytes .Size}} ({{Comma .Size}})B - Body Changed? {{.BodyChanged}} {{ if .BodyChanged }} <a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">diff</a> {{end}} - Valid? {{.Valid}} <a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">Replay</a></li>
-{{end}}
-</ul>
-<a href="./results?date=today&feed={{$url}}">View All Results</a>
+    <div class="w3-panel">
+        <div class="w3-row-padding" style="margin:0 -16px">
+            <div class="w3-twothird">
+                <h5>General Stats</h5>
+                <table class="w3-table w3-striped w3-white">
+                    <tr>
+                        <td>Current Status</td>
+                        {{if eq 1 .Endpoint.CurrentStatus}}
+                        <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                        {{else if eq 2 .Endpoint.CurrentStatus}}
+                        <td><i class="fa fa-circle" style="color: red"></i> Error</td>
+                        {{else}}
+                        <td><i class="fa fa-circle" style="color: orange"></i> Unknown</td>
+                        {{end}}
+                    </tr>
+                    <tr>
+                        <td>URL Type</td>
+                        {{if .Endpoint.Dynamic}}
+                        <td>Dyanmic</td>
+                        {{else}}
+                        <td>Static</td>
+                        {{end}}
+                    </tr>
+                    <tr>
+                        <td>URL</td>
+                        <td>{{.Endpoint.URL}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="w3-panel">
+        <div class="w3-row-padding" style="margin:0 -16px">
+            {{if eq 2 .Endpoint.CurrentStatus}}
+            <div class="w3-twothird">
+            {{else}}
+            <div class="w3-third">
+            {{end}}
+                <h5>Current Validation</h5>
+                <table class="w3-table w3-striped w3-white">
+                    {{range .Endpoint.CurrentValidation}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        {{if .Valid}}
+                        <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                        {{else}}
+                        <td><i class="fa fa-circle" style="color: red"></i> Invalid</td>
+                        {{end}}
+                        <td>{{range .Errors}}{{.}}<br/>{{end}}</td>
+                    </tr>
+                    {{end}}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{ range .URLS }}
+    <div class="w3-container">
+        <h5>URL: <a href="{{.}}">{{.}}</a></h5>
+        <div><a href="./performance?date=today&feed={{.}}">View Performance Log</a></div>
+        <h6>Recent Results</h6>
+        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+        {{ $url := . }}
+        {{range (index $.Results  .)}}
+            <tr>
+                <td><a href="result?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">{{.CheckTime.Format "2006-01-02 15:04:05 MST"}}</a></td>
+                <td>{{Comma (FormatDuration .Duration)}}ms</td>
+                <td>{{Bytes .Size}} ({{Comma .Size}})B</td>
+                {{if .BodyChanged}}
+                <td>Body Changed (<a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">View Diff</a>)</td>
+                {{else}}
+                <td>No Change</td>
+                {{end}}
+                {{if .Valid}}
+                <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                {{else}}
+                <td><i class="fa fa-circle" style="color: red"></i> Invalid</td>
+                {{end}}
+                <td><a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$url}}">Replay</a></td>
+            </tr>
+        {{end}}
+        </table>
+        <h6><a href="./results?date=today&feed={{.}}">View All Results</a></h6>
+    </div>
+    {{end}}
+
 </div>
-{{end}}
+
+{{template "footscript" .}}
+
 </body>
 </html>

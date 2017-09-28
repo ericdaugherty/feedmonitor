@@ -1,0 +1,64 @@
+{{define "head"}}
+<head>
+<title>{{template "title" .}}</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="{{template "relroot"}}css/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+<link rel="stylesheet" href="{{template "relroot"}}css/font-awesome.min.css">
+<style>html,body,h1,h2,h3,h4,h5 {font-family: "Raleway", sans-serif}</style>
+{{template "additionalHead" .}}
+</head>
+{{end}}
+
+{{define "navbar"}}
+<!-- Top container -->
+<div class="w3-bar w3-top w3-black w3-large" style="z-index:4">
+    <button class="w3-bar-item w3-button w3-hide-large w3-hover-none w3-hover-text-light-grey" onclick="w3_open();"><i class="fa fa-bars"></i>  Menu</button>
+    <span class="w3-bar-item w3-right">FeedMonitor</span>
+</div>
+{{end}}
+
+{{define "sidenav"}}
+<!-- Sidebar/menu -->
+<nav class="w3-sidebar w3-collapse w3-white w3-animate-left" style="z-index:3;width:300px;" id="mySidebar"><br>
+    <div class="w3-container">
+        <a href="{{template "relroot"}}" style="text-decoration:none"><h5>Home</h5></a>
+    </div>
+    <div class="w3-container">
+      <h5>Applications</h5>
+    </div>
+    <div class="w3-bar-block">
+    {{range .Applications}}
+      {{if $.Endpoint}}
+      <a href="{{template "relroot"}}app/{{.Key}}/" class="w3-bar-item w3-button w3-padding">{{.Name}}</a>
+      <div id="endpoints" class="w3-bar-block w3-medium"></div>
+      {{if $.Application}}{{if eq .Key $.Application.Key}}
+      {{range .Endpoints}}
+          <a href="{{template "relroot"}}/app/{{$.Application.Key}}/{{.Key}}/" class="w3-bar-item w3-button w3-padding {{if $.Endpoint}}{{if eq .Key $.Endpoint.Key}}w3-blue{{end}}{{end}}"><i class="fa fa-link"></i> {{.Name}}</a>
+      {{end}}
+      {{end}}{{end}}
+      </div>
+      {{else}}
+      <a href="{{template "relroot"}}app/{{.Key}}/" class="w3-bar-item w3-button w3-padding {{if $.Application}}{{if eq .Key $.Application.Key}}w3-blue{{end}}{{end}}">{{.Name}}</a>
+      {{end}}
+    {{end}}
+    </div>
+</nav>
+{{end}}
+
+{{define "footscript"}}
+<script>
+    // Get the Sidebar
+    var mySidebar = document.getElementById("mySidebar");
+    
+    // Toggle between showing and hiding the sidebar, and add overlay effect
+    function w3_open() {
+        if (mySidebar.style.display === 'block') {
+            mySidebar.style.display = 'none';
+        } else {
+            mySidebar.style.display = 'block';
+        }
+    }
+</script>
+{{end}}

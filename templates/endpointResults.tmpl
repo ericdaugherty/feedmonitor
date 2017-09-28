@@ -1,18 +1,46 @@
+{{define "title"}}FeedMonitor - {{.Application.Name}} - {{.Endpoint.Name}}{{end}}
+{{define "additionalHead"}}{{end}}
+{{define "relroot"}}../../../../{{end}}
+
+<!DOCTYPE html>
 <html>
+{{template "head" .}}
+<body class="w3-light-grey">
 
-<head>
-</head>
-<body>
-<div><a href="../../../../">Home</a> - <a href="../">{{.Application.Name}}</a> - <a href=".">{{.Endpoint.Name}}</a></div>
-<h2>{{.Application.Name}} - {{.Endpoint.Name}} - Results</h2>
+{{template "navbar" .}}
 
-<h3>Results<h3>
-{{ if .Endpoint.Dynamic }}
-<div><a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.Feed}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.Feed}}">Next</a>
-{{ else }}
-<div><a href="?date={{.PrevDate.Format "2006-01-02"}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}">Next</a>
-{{ end }}
-<div>
+{{template "sidenav" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+    <!-- Header -->
+    <header class="w3-container" style="padding-top:22px">
+        <h5><b><i class="fa fa-dashboard"></i> {{.Application.Name}} - {{.Endpoint.Name}}</b></h5>
+    </header>
+    <div class="w3-container">
+        <h5><a href="{{.FeedURL}}">{{.FeedURL}}</a></h5>
+        <h6>{{.Date}}</h6>
+        <a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Previous Day</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Next Day</a>
+        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+        {{range .Results}}
+            <tr>
+                <td><a href="result?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.FeedURL}}">{{.CheckTime.Format "2006-01-02 15:04:05 MST"}}</a></td>
+                <td>{{Comma (FormatDuration .Duration)}}ms</td>
+                <td>{{Bytes .Size}} ({{Comma .Size}})B</td>
+                {{if .BodyChanged}}
+                <td>Body Changed (<a href="./diff?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.FeedURL}}">View Diff</a>)</td>
+                {{else}}
+                <td>No Change</td>
+                {{end}}
+                {{if .Valid}}
+                <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                {{else}}
+                <td><i class="fa fa-circle" style="color: red"></i> Invalid</td>
+                {{end}}
+                <td><a href="./replay?date={{.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{$.FeedURL}}">Replay</a></td>
+            </tr>
+        {{end}}
+        </table>
 <ul>
 {{ range .Results }}
   {{ if $.Endpoint.Dynamic }}

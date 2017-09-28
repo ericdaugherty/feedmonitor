@@ -36,6 +36,7 @@ type Configuration struct {
 	WebPort      int
 	WebRoot      string
 	AppConfigDir string
+	WebDevMode   bool
 }
 
 // ApplicationConfig represents configuration data loaded from the configuration file for a specific application
@@ -186,6 +187,7 @@ func (c *Configuration) initialize() {
 		c.LogLevel = options.LogLevel
 	}
 
+	c.WebDevMode = options.WebDevelopment
 }
 
 func (c *Configuration) initializeNotifier(vtype string) (Notifier, bool) {

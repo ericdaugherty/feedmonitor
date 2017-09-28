@@ -1,40 +1,119 @@
+{{define "title"}}FeedMonitor - {{.Application.Name}} - {{.Endpoint.Name}}{{end}}
+{{define "additionalHead"}}{{end}}
+{{define "relroot"}}../../../{{end}}
+<!DOCTYPE html>
 <html>
+{{template "head" .}}
+<body class="w3-light-grey">
 
-<head>
-</head>
-<body>
-<div><a href="../../../../">Home</a> - <a href="../">{{.Application.Name}}</a> - <a href=".">{{.Endpoint.Name}}</a></div>
+{{template "navbar" .}}
 
-<h1>{{.Application.Name}}</h1>
-<h2>{{.Endpoint.Name}}</h2>
-<h2><a href="{{.URL}}">{{.URL}}</a></h2>
-<h2>Check Time: {{.Result.CheckTime.Format "2006-01-02 15:04:05 MST"}}</h2>
+{{template "sidenav" .}}
 
-<ul>
-<li>Status: {{.Result.Status}}</li>
-<li>Size: {{Bytes .Result.Size}} ({{Comma .Result.Size}})B</li>
-<li>Duration: {{Comma (FormatDuration .Result.Duration)}}ms</li>
-<li>Body Changed?: {{.Result.BodyChanged}}  {{ if .Result.BodyChanged }} <a href="./diff?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.URL}}">View Diff</a> {{end}}</li>
-<li>Valid? {{.Result.Valid}}</li>
-</ul>
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+    <!-- Header -->
+    <header class="w3-container" style="padding-top:22px">
+        <h5><b><i class="fa fa-dashboard"></i> {{.Application.Name}} - {{.Endpoint.Name}}</b></h5>
+        <h5><a href="{{.FeedURL}}">{{.FeedURL}}</a></h5>
+        <h6>{{.Result.CheckTime.Format "2006-01-02 15:04:05 MST"}}</h6>
+        <h6><a href="./replay?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.URL}}">Replay Result</a></h6>
+    </header>
 
-<h3>Validation Results</h3>
-<div>Validators:
-<ul>
-{{range .Result.ValidationResults}}
-<li>Name: {{.Name}} Valid: {{.Valid}}
-<ul>
-{{range .Errors}}<li>{{.}}</li>{{end}}
-</ul>
-</li>
-{{end}}
-</ul>
+    <div class="w3-panel">
+        <div class="w3-row-padding" style="margin:0 -16px">
+            <div class="w3-twothird">
+                <h5>General</h5>
+                <table class="w3-table w3-striped w3-white">
+                    <tr>
+                        <td>HTTP Status</td>
+                        <td>{{.Result.Status}}</td>
+                    </tr>
+                    <tr>
+                        <td>Size</td>
+                        <td>{{Bytes .Result.Size}} ({{Comma .Result.Size}})B</td>
+                    </tr>
+                    <tr>
+                        <td>Duration</td>
+                        <td>{{Comma (FormatDuration .Result.Duration)}}ms</td>
+                    </tr>
+                    <tr>
+                        <td>Body</td>
+                        {{if .Result.BodyChanged}}
+                        <td>Body Changed (<a href="./diff?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.FeedURL}}">View Diff</a>)</td>
+                        {{else}}
+                        <td>No Change</td>
+                        {{end}}
+                    <tr>
+                        <td>URL Type</td>
+                        {{if .Endpoint.Dynamic}}
+                        <td>Dyanmic</td>
+                        {{else}}
+                        <td>Static</td>
+                        {{end}}
+                    </tr>
+                    <tr>
+                        <td>URL</td>
+                        <td>{{.Endpoint.URL}}</td>
+                    </tr>
+                    <tr>
+                        <td>Validation</td>
+                        {{if .Result.Valid}}
+                        <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                        {{else}}
+                        <td><i class="fa fa-circle" style="color: red"></i> Error</td>
+                        {{end}}
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="w3-panel">
+        <div class="w3-row-padding" style="margin:0 -16px">
+            <div class="w3-twothird">
+                <h5>Headers</h5>
+                <table class="w3-table w3-striped w3-white">
+                {{range $k, $v := .Result.Headers}}
+                <tr>
+                    <td>{{$k}}</td>
+                    <td>{{range $v}}"{{.}}" {{end}}</td>
+                </tr>
+                {{end}}
+                </table>
+            </div>
+        </div>
+    </div>
+ 
+
+    <div class="w3-panel">
+        <div class="w3-row-padding" style="margin:0 -16px">
+            {{if .Result.Valid}}
+            <div class="w3-third">
+            {{else}}
+            <div class="w3-twothird">
+            {{end}}
+                <h5>Validation Results</h5>
+                <table class="w3-table w3-striped w3-white">
+                    {{range .Result.ValidationResults }}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        {{if .Valid}}
+                        <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                        {{else}}
+                        <td><i class="fa fa-circle" style="color: red"></i> Invalid</td>
+                        {{end}}
+                        <td>{{range .Errors}}{{.}}<br/>{{end}}</td>
+                    </tr>
+                    {{end}}
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<div>
-<a href="./replay?date={{.Result.CheckTime.Format "2006-01-02T15:04:05Z07:00"}}&feed={{.URL}}">Replay</a>
-</div>
-
+{{template "footscript" .}}
 
 </body>
 </html>

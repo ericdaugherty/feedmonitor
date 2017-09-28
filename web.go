@@ -39,6 +39,7 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	r.HandleFunc("/", home)
 	r.Handle("/js/{rest}", http.StripPrefix("/js/", http.FileServer(http.Dir("web/js"))))
 	r.Handle("/css/{rest}", http.StripPrefix("/css/", http.FileServer(http.Dir("web/css"))))
+	r.Handle("/fonts/{rest}", http.StripPrefix("/fonts/", http.FileServer(http.Dir("web/fonts"))))
 	r.HandleFunc("/app/{app}/", appHome)
 	r.HandleFunc("/app/{app}/{endpoint}/", endpointHome)
 	r.HandleFunc("/app/{app}/{endpoint}/result", endpointResult)
@@ -82,6 +83,10 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 }
 
 func initTemplates() {
+	if templates != nil && !configuration.WebDevMode {
+		return
+	}
+
 	if templates == nil {
 		templates = make(map[string]*template.Template)
 	}
@@ -92,6 +97,7 @@ func initTemplates() {
 	if err != nil {
 		webLog.Fatal("Error initializing HTML Templates", err)
 	}
+	templateHelperPath := path.Join("templates", "helper.tmpl")
 
 	funcMap := template.FuncMap{
 		"FormatDuration": formatDuration,
@@ -104,7 +110,7 @@ func initTemplates() {
 	for _, filePath := range templatePaths {
 		name := strings.TrimSuffix(path.Base(filePath), ".tmpl")
 		t := template.New(name).Funcs(funcMap)
-		templates[name] = template.Must(t.ParseFiles(filePath))
+		templates[name] = template.Must(t.ParseFiles(filePath, templateHelperPath))
 	}
 }
 
@@ -113,17 +119,17 @@ func formatDuration(d time.Duration) int64 {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
 
-	args := struct {
-		Applications []*Application
-	}{
-		applications,
-	}
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
 
-	renderTemplate(w, r, "home", args)
+	renderTemplate(w, r, "home", templateData)
 }
 
 func appHome(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
+
 	vars := mux.Vars(r)
 
 	app := configuration.getApplication(vars["app"])
@@ -132,10 +138,16 @@ func appHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renderTemplate(w, r, "appHome", app)
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
+	templateData["Application"] = app
+
+	renderTemplate(w, r, "appHome", templateData)
 }
 
 func endpointHome(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
+
 	found, app, endpoint := getAppEndpoint(w, r)
 	if !found {
 		notFoundHandler(w, r)
@@ -145,6 +157,7 @@ func endpointHome(w http.ResponseWriter, r *http.Request) {
 	templateData := make(map[string]interface{})
 	urls := []string{}
 	recentResults := make(map[string][]EndpointResult)
+	templateData["Applications"] = applications
 	templateData["Application"] = app
 	templateData["Endpoint"] = endpoint
 
@@ -168,6 +181,7 @@ func endpointHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func endpointResult(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
 	found, app, endpoint := getAppEndpoint(w, r)
 	if !found {
 		notFoundHandler(w, r)
@@ -191,22 +205,18 @@ func endpointResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	args := struct {
-		Application *Application
-		Endpoint    *Endpoint
-		URL         string
-		Result      *EndpointResult
-	}{
-		app,
-		endpoint,
-		url,
-		epr,
-	}
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
+	templateData["Application"] = app
+	templateData["Endpoint"] = endpoint
+	templateData["FeedURL"] = url
+	templateData["Result"] = epr
 
-	renderTemplate(w, r, "endpointResult", args)
+	renderTemplate(w, r, "endpointResult", templateData)
 }
 
 func endpointResults(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
 	found, app, endpoint := getAppEndpoint(w, r)
 	if !found {
 		notFoundHandler(w, r)
@@ -222,28 +232,21 @@ func endpointResults(w http.ResponseWriter, r *http.Request) {
 
 	results, _ := GetEndpointResultsForDate(app.Key, endpoint.Key, url, date)
 
-	args := struct {
-		Application *Application
-		Endpoint    *Endpoint
-		Results     []EndpointResult
-		Date        time.Time
-		NextDate    time.Time
-		PrevDate    time.Time
-		Feed        string
-	}{
-		app,
-		endpoint,
-		results,
-		date,
-		date.Add(24 * time.Hour),
-		date.Add(-24 * time.Hour),
-		url,
-	}
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
+	templateData["Application"] = app
+	templateData["Endpoint"] = endpoint
+	templateData["Results"] = results
+	templateData["Date"] = date.Format("Mon Jan _2 2006")
+	templateData["NextDate"] = date.Add(24 * time.Hour)
+	templateData["PrevDate"] = date.Add(-24 * time.Hour)
+	templateData["FeedURL"] = url
 
-	renderTemplate(w, r, "endpointResults", args)
+	renderTemplate(w, r, "endpointResults", templateData)
 }
 
 func endpointPerformance(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
 	found, app, endpoint := getAppEndpoint(w, r)
 	if !found {
 		notFoundHandler(w, r)
@@ -273,6 +276,7 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 	tom := d.Add(24 * time.Hour)
 
 	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
 	templateData["Application"] = app
 	templateData["Endpoint"] = endpoint
 	templateData["FeedURL"] = url

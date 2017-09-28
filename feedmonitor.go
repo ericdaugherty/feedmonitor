@@ -15,8 +15,9 @@ import (
 
 // Options defines the valid command line parameters/flags.
 type Options struct {
-	ConfigPath string `short:"c" long:"config" description:"The path to the configuration file." default:"feedmon.yaml"`
-	LogLevel   string `short:"l" long:"log-level" description:"The minimum log level to output." choice:"debug" choice:"info" choice:"warn" choice:"error"`
+	ConfigPath     string `short:"c" long:"config" description:"The path to the configuration file." default:"feedmon.yaml"`
+	LogLevel       string `short:"l" long:"log-level" description:"The minimum log level to output." choice:"debug" choice:"info" choice:"warn" choice:"error"`
+	WebDevelopment bool   `short:"w" long:"webdev" description:"Enable Development Mode for the web tier. Templates will be reloaded on each request."`
 }
 
 var options Options
@@ -34,6 +35,7 @@ func main() {
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
 			os.Exit(0)
 		} else {
+			fmt.Println("Error Parsing Flags", err)
 			os.Exit(1)
 		}
 	}

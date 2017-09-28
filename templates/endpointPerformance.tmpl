@@ -1,6 +1,5 @@
-<html>
-
-<head>
+{{define "title"}}FeedMonitor - {{.Application.Name}} - {{.Endpoint.Name}}{{end}}
+{{define "additionalHead"}}
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript">
       google.charts.load('current', {'packages':['corechart', 'scatter']});
@@ -53,22 +52,34 @@
         chart.draw(data, options);
       }
     </script>
-</head>
+{{end}}
+{{define "relroot"}}../../../{{end}}
 
-<body>
-<div><a href="../../../../">Home</a> - <a href="../">{{.Application.Name}}</a> - <a href=".">{{.Endpoint.Name}}</a></div>
-  <div>
-    URL: {{.FeedURL}}<br/>
-    Date: {{.Date}}<br/>
-  </div>
-  {{ if .Endpoint.Dynamic }}
-<div><a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Next</a>
-{{ else }}
-<div><a href="?date={{.PrevDate.Format "2006-01-02"}}">Prev</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}">Next</a>
-{{ end }}
+<!DOCTYPE html>
+<html>
+{{template "head" .}}
+<body class="w3-light-grey">
 
-    <div id="chart_div" style="height: 500px;"></div>  
-    
+{{template "navbar" .}}
+
+{{template "sidenav" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+    <!-- Header -->
+    <header class="w3-container" style="padding-top:22px">
+        <h5><b><i class="fa fa-dashboard"></i> {{.Application.Name}} - {{.Endpoint.Name}}</b></h5>
+    </header>
+    <div class="w3-container">
+        <h5><a href="{{.FeedURL}}">{{.FeedURL}}</a></h5>
+        <h6>{{.Date}}</h6>
+        <a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Previous Day</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Next Day</a>
+
+        <div id="chart_div" style="height: 500px;"></div>  
+    </div>
+</div>
+{{template "footscript" .}}
+
 </body>
 
 </html>

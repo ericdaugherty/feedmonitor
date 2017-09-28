@@ -1,14 +1,42 @@
+{{define "title"}}FeedMonitor - {{.Application.Name}}{{end}}
+{{define "additionalHead"}}{{end}}
+{{define "relroot"}}../../{{end}}
+<!DOCTYPE html>
 <html>
+{{template "head" .}}
+<body class="w3-light-grey">
 
-<head>
-</head>
-<body>
-<div><a href="../../">Home</a></div>
-<h1>{{.Name}} Home</h1>
-<h3>Endpoints:</h3>
-<p>
-<ul>
-{{ range .Endpoints }}<li><a href="./{{.Key}}/">{{.Name}} - {{.URL}}</a> - Status: {{.CurrentStatus}}</li>{{end}}
-</ul>
+{{template "navbar" .}}
+
+{{template "sidenav" .}}
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:300px;margin-top:43px;">
+    <!-- Header -->
+    <header class="w3-container" style="padding-top:22px">
+        <h2><b>{{.Application.Name}}</b></h5>
+    </header>
+
+    <div class="w3-container">
+        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+        {{range .Application.Endpoints}}
+            <tr>
+                <td><a href="{{template "relroot"}}app/{{$.Application.Key}}/{{.Key}}/" class="w3-bar-item w3-button w3-padding">{{.Name}}</a></td>
+                {{if .Dynamic}}<td>{{.URL}}</td>{{else}}<td><a href="{{.URL}}">{{.URL}}</a></td>{{end}}
+                {{if eq 1 .CurrentStatus}}
+                <td><i class="fa fa-circle" style="color: green"></i> Valid</td>
+                {{else if eq 2 .CurrentStatus}}
+                <td><i class="fa fa-circle" style="color: red"></i> Error</td>
+                {{else}}
+                <td><i class="fa fa-circle" style="color: orange"></i> Unknown</td>
+                {{end}}
+
+            </tr>
+        {{end}}
+        </table>
+    </div>
+</div>
+{{template "footscript" .}}
+
 </body>
 </html>
