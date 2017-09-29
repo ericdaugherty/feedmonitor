@@ -78,6 +78,9 @@
     <div class="w3-container">
         <h5>URL: <a href="{{.}}">{{.}}</a></h5>
         <div><a href="./performance?date=today&feed={{.}}">View Performance Log</a></div>
+        <div><a href="./resultsdiff?feed={{.}}">View Recent Diffs</a></div>
+        <div><a href="./resultsinvalid?feed={{.}}">View Recent Validation Failures</a></div>        
+        <div><a href="./results?date=today&feed={{.}}">View Results by Day</a></div>
         <h6>Recent Results</h6>
         <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
         {{ $url := . }}
@@ -100,7 +103,6 @@
             </tr>
         {{end}}
         </table>
-        <h6><a href="./results?date=today&feed={{.}}">View All Results</a></h6>
     </div>
     {{end}}
 

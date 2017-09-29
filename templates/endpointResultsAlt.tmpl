@@ -19,12 +19,12 @@
     </header>
     <div class="w3-container">
         <h5><a href="{{.FeedURL}}">{{.FeedURL}}</a></h5>
-        <h6>{{.Date}}</h6>
+        <h6>{{.FilterName}}</h6>
         <div><a href="./performance?date=today&feed={{.FeedURL}}">View Performance Log</a></div>
-        <div><a href="./resultsdiff?feed={{.FeedURL}}">View Recent Diffs</a></div>
-        <div><a href="./resultsinvalid?feed={{.FeedURL}}">View Recent Validation Failures</a></div>        
+        {{if ne .FilterName "Diffs"}}<div><a href="./resultsdiff?feed={{.FeedURL}}">View Recent Diffs</a></div>{{end}}
+        {{if ne .FilterName "Invalid Results"}}<div><a href="./resultsinvalid?feed={{.FeedURL}}">View Recent Validation Failures</a></div>{{end}}
+        <div><a href="./results?date=today&feed={{.FeedURL}}">View Results by Day</a></div>
         <div>&nbsp;</div>
-        <div><a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Previous Day</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Next Day</a></div>
         <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
         {{range .Results}}
             <tr>

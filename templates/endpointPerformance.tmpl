@@ -73,6 +73,10 @@
     <div class="w3-container">
         <h5><a href="{{.FeedURL}}">{{.FeedURL}}</a></h5>
         <h6>{{.Date}}</h6>
+        <div><a href="./resultsdiff?feed={{.FeedURL}}">View Recent Diffs</a></div>
+        <div><a href="./resultsinvalid?feed={{.FeedURL}}">View Recent Validation Failures</a></div>        
+        <div><a href="./results?date=today&feed={{.FeedURL}}">View Results by Day</a></div>
+        <div>&nbsp;</div>
         <a href="?date={{.PrevDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Previous Day</a> - <a href="?date={{.NextDate.Format "2006-01-02"}}&feed={{.FeedURL}}">Next Day</a>
 
         <div id="chart_div" style="height: 500px;"></div>  

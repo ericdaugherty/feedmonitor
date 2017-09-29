@@ -44,6 +44,8 @@ func StartWebserver(ctx context.Context, wg *sync.WaitGroup, logger *logrus.Entr
 	r.HandleFunc("/app/{app}/{endpoint}/", endpointHome)
 	r.HandleFunc("/app/{app}/{endpoint}/result", endpointResult)
 	r.HandleFunc("/app/{app}/{endpoint}/results", endpointResults)
+	r.HandleFunc("/app/{app}/{endpoint}/resultsdiff", endpointResultsDiff)
+	r.HandleFunc("/app/{app}/{endpoint}/resultsinvalid", endpointResultsInvalid)
 	r.HandleFunc("/app/{app}/{endpoint}/performance", endpointPerformance)
 	r.HandleFunc("/app/{app}/{endpoint}/replay", endpointReplay)
 	r.HandleFunc("/app/{app}/{endpoint}/diff", endpointDiff)
@@ -243,6 +245,52 @@ func endpointResults(w http.ResponseWriter, r *http.Request) {
 	templateData["FeedURL"] = url
 
 	renderTemplate(w, r, "endpointResults", templateData)
+}
+
+func endpointResultsDiff(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
+	found, app, endpoint := getAppEndpoint(w, r)
+	if !found {
+		notFoundHandler(w, r)
+		return
+	}
+
+	url := getURL(endpoint, r)
+
+	results, _ := GetLastNDiffEndpointResult(app.Key, endpoint.Key, url, 100)
+
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
+	templateData["Application"] = app
+	templateData["Endpoint"] = endpoint
+	templateData["Results"] = results
+	templateData["FeedURL"] = url
+	templateData["FilterName"] = "Diffs"
+
+	renderTemplate(w, r, "endpointResultsAlt", templateData)
+}
+
+func endpointResultsInvalid(w http.ResponseWriter, r *http.Request) {
+	initTemplates()
+	found, app, endpoint := getAppEndpoint(w, r)
+	if !found {
+		notFoundHandler(w, r)
+		return
+	}
+
+	url := getURL(endpoint, r)
+
+	results, _ := GetLastNInvalidEndpointResult(app.Key, endpoint.Key, url, 100)
+
+	templateData := make(map[string]interface{})
+	templateData["Applications"] = applications
+	templateData["Application"] = app
+	templateData["Endpoint"] = endpoint
+	templateData["Results"] = results
+	templateData["FeedURL"] = url
+	templateData["FilterName"] = "Invalid Results"
+
+	renderTemplate(w, r, "endpointResultsAlt", templateData)
 }
 
 func endpointPerformance(w http.ResponseWriter, r *http.Request) {
