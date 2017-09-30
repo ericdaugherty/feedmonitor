@@ -3,3 +3,7 @@ feedmonitor_linux
 feedmon.db
 feedmon.log
 prodcfg
+
+TODO
+Makefile
+cfg

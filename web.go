@@ -163,6 +163,7 @@ func endpointHome(w http.ResponseWriter, r *http.Request) {
 	templateData["Application"] = app
 	templateData["Endpoint"] = endpoint
 
+	app.rwMu.RLock()
 	if endpoint.Dynamic {
 		for _, url := range endpoint.CurrentURLs {
 			urls = append(urls, url)
@@ -175,6 +176,7 @@ func endpointHome(w http.ResponseWriter, r *http.Request) {
 		urls = append(urls, endpoint.URL)
 		recentResults[endpoint.URL], _ = GetLastNEndpointResult(app.Key, endpoint.Key, endpoint.URL, 10)
 	}
+	app.rwMu.RUnlock()
 
 	templateData["URLS"] = urls
 	templateData["Results"] = recentResults
@@ -196,6 +198,7 @@ func endpointResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	app.rwMu.RLock()
 	url := getURL(endpoint, r)
 
 	epr, err := GetEndpointResult(app.Key, endpoint.Key, url, date)
@@ -206,6 +209,7 @@ func endpointResult(w http.ResponseWriter, r *http.Request) {
 		notFoundHandler(w, r)
 		return
 	}
+	app.rwMu.RUnlock()
 
 	templateData := make(map[string]interface{})
 	templateData["Applications"] = applications
@@ -225,14 +229,17 @@ func endpointResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := getURL(endpoint, r)
 	date, ok := getDate(r, "2006-01-02")
 	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
 
+	app.rwMu.RLock()
+	url := getURL(endpoint, r)
+
 	results, _ := GetEndpointResultsForDate(app.Key, endpoint.Key, url, date)
+	app.rwMu.RUnlock()
 
 	templateData := make(map[string]interface{})
 	templateData["Applications"] = applications
@@ -255,9 +262,11 @@ func endpointResultsDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	app.rwMu.RLock()
 	url := getURL(endpoint, r)
 
 	results, _ := GetLastNDiffEndpointResult(app.Key, endpoint.Key, url, 100)
+	app.rwMu.RUnlock()
 
 	templateData := make(map[string]interface{})
 	templateData["Applications"] = applications
@@ -278,9 +287,11 @@ func endpointResultsInvalid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	app.rwMu.RLock()
 	url := getURL(endpoint, r)
 
 	results, _ := GetLastNInvalidEndpointResult(app.Key, endpoint.Key, url, 100)
+	app.rwMu.RUnlock()
 
 	templateData := make(map[string]interface{})
 	templateData["Applications"] = applications
@@ -301,14 +312,18 @@ func endpointPerformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := getURL(endpoint, r)
 	date, ok := getDate(r, "2006-01-02")
 	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
 
+	app.rwMu.RLock()
+	url := getURL(endpoint, r)
+
 	perfRecs, err := GetPerformanceRecordsForDate(app.Key, endpoint.Key, url, date)
+	app.rwMu.RUnlock()
+
 	if err != nil {
 		errorHandler(w, r, err.Error())
 		return
@@ -345,14 +360,18 @@ func endpointReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := getURL(endpoint, r)
 	date, ok := getDate(r, time.RFC3339)
 	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
 
+	app.rwMu.RLock()
+	url := getURL(endpoint, r)
+
 	epr, err := GetEndpointResult(app.Key, endpoint.Key, url, date)
+	app.rwMu.RUnlock()
+
 	if err != nil {
 		errorHandler(w, r, err.Error())
 		return
@@ -374,12 +393,14 @@ func endpointDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := getURL(endpoint, r)
 	date, ok := getDate(r, time.RFC3339)
 	if !ok {
 		badRequestHandler(w, r)
 		return
 	}
+
+	app.rwMu.RLock()
+	url := getURL(endpoint, r)
 
 	epr, err := GetEndpointResult(app.Key, endpoint.Key, url, date)
 	if err != nil {
@@ -393,6 +414,7 @@ func endpointDiff(w http.ResponseWriter, r *http.Request) {
 	}
 
 	oldEpr, err := GetEndpointResultPrev(app.Key, endpoint.Key, url, date)
+	app.rwMu.RUnlock()
 	if err != nil {
 		errorHandler(w, r, err.Error())
 		return
@@ -405,7 +427,9 @@ func endpointDiff(w http.ResponseWriter, r *http.Request) {
 
 	var oldPretty bytes.Buffer
 	var newPretty bytes.Buffer
-	json.Indent(&oldPretty, oldEpr.Body, "", "  ")
+	if oldEpr != nil {
+		json.Indent(&oldPretty, oldEpr.Body, "", "  ")
+	}
 	json.Indent(&newPretty, epr.Body, "", "  ")
 
 	templateData := make(map[string]interface{})
@@ -435,7 +459,14 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errorDesc string) {
 	fmt.Fprintf(w, "Server Error: %v", errorDesc)
 }
 
-func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
+func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
+
+	applicationsRWMu.RLock()
+	defer applicationsRWMu.RUnlock()
+	for _, app := range applications {
+		app.rwMu.RLock()
+		defer app.rwMu.RUnlock()
+	}
 
 	tmpl, ok := templates[name]
 	if !ok {
@@ -452,7 +483,6 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 }
 
 func renderEndpointReplay(w http.ResponseWriter, r *http.Request, epr *EndpointResult) {
-
 	for k, v := range epr.Headers {
 		for _, kv := range v {
 			w.Header().Add(k, kv)

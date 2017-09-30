@@ -4,6 +4,7 @@ import (
 	"encoding/base32"
 	"io/ioutil"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,6 +19,7 @@ import (
 const bodyFileName = "body"
 
 var repos = make(map[string]*GitRepo)
+var reposMu = &sync.Mutex{}
 
 // GitRepo repesents the git repo for a specific Endpoint URL
 type GitRepo struct {
@@ -35,7 +37,9 @@ func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error)
 	encodedURL := base32.StdEncoding.EncodeToString([]byte(url))
 	dir := filepath.Join(configuration.GitRoot, appKey, endpointKey, encodedURL)
 
+	reposMu.Lock()
 	gitRepo, ok := repos[dir]
+	reposMu.Unlock()
 	if ok {
 		return gitRepo, nil
 	}
@@ -52,7 +56,9 @@ func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error)
 	}
 	gitRepo.repo = r
 
+	reposMu.Lock()
 	repos[dir] = gitRepo
+	reposMu.Unlock()
 
 	return gitRepo, nil
 }

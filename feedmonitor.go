@@ -23,8 +23,9 @@ type Options struct {
 var options Options
 var configuration = &Configuration{}
 var applications []*Application
+var applicationsRWMu = &sync.RWMutex{}
+var mainWg = &sync.WaitGroup{}
 var log *logrus.Entry
-var shutdown = false
 
 var parser = flags.NewParser(&options, flags.Default)
 
@@ -59,7 +60,6 @@ func main() {
 
 	helperContext, helperCancel := context.WithCancel(context.Background())
 
-	var mainWg sync.WaitGroup
 	var helperWg sync.WaitGroup
 
 	c := make(chan os.Signal, 1)
@@ -79,20 +79,28 @@ func main() {
 		log.Fatalf("No applications found. Exiting.")
 	}
 
+	StartWatchingConfigDirectory()
+
+	applicationsRWMu.RLock()
 	for _, a := range applications {
-		go startFeedMonitor(ctx, &mainWg, a)
+		a.startFeedMonitor(mainWg)
 	}
+	applicationsRWMu.RUnlock()
 
 	select {
 	case <-c:
 		log.Info("System Interrupt Received. Shutting Down.")
-		shutdown = true
+		applicationsRWMu.RLock()
+		for _, app := range applications {
+			app.stopFeedMonitor()
+		}
+		applicationsRWMu.RUnlock()
 		cancel()
 	case <-ctx.Done():
 		fmt.Println("Done")
 	}
 
-	if waitTimeout(&mainWg, 10*time.Second) {
+	if waitTimeout(mainWg, 10*time.Second) {
 		log.Info("App Threads Shutdown after TIMEOUT.")
 	} else {
 		log.Info("App Threads Shutdown Cleanly.")
@@ -146,52 +154,4 @@ func initializeLogger() *logrus.Entry {
 	}
 
 	return logrus.WithFields(logrus.Fields{"module": "core"})
-}
-
-func startFeedMonitor(ctx context.Context, wg *sync.WaitGroup, app *Application) {
-
-	log := log.WithFields(logrus.Fields{
-		"module": "feedmonitor",
-		"app":    app.Key,
-	})
-
-	ticker := time.NewTicker(1 * time.Second)
-
-	go func() {
-		log.Debug("Started Feed Checker.")
-
-		wg.Add(1)
-		defer wg.Done()
-
-		var data = make(map[string]interface{})
-		for {
-			select {
-			case <-ticker.C:
-				for _, e := range app.Endpoints {
-					if shutdown {
-						log.Debug("Shutting down Feed Checker.")
-						return
-					}
-					if e.shouldCheckNow() {
-						e.scheduleNextCheck()
-						if e.Dynamic {
-							urls, err := e.parseURLs(data)
-							if err != nil {
-								log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
-							}
-							for _, url := range urls {
-								fetchEndpoint(app, e, url)
-							}
-						} else {
-							data[e.Key], _ = fetchEndpoint(app, e, e.URL)
-						}
-					}
-				}
-
-			case <-ctx.Done():
-				log.Debug("Shutting down Feed Checker.")
-				return
-			}
-		}
-	}()
 }

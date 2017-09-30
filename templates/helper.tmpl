@@ -31,11 +31,11 @@
     <div class="w3-bar-block">
     {{range .Applications}}
       {{if $.Endpoint}}
-      <a href="{{template "relroot"}}app/{{.Key}}/" class="w3-bar-item w3-button w3-padding">{{.Name}}</a>
+      <div><a href="{{template "relroot"}}app/{{.Key}}/" class="w3-bar-item w3-button w3-padding">{{.Name}}</a></div>
       <div id="endpoints" class="w3-bar-block w3-medium"></div>
       {{if $.Application}}{{if eq .Key $.Application.Key}}
       {{range .Endpoints}}
-          <a href="{{template "relroot"}}/app/{{$.Application.Key}}/{{.Key}}/" class="w3-bar-item w3-button w3-padding {{if $.Endpoint}}{{if eq .Key $.Endpoint.Key}}w3-blue{{end}}{{end}}"><i class="fa fa-link"></i> {{.Name}}</a>
+          <div><a href="{{template "relroot"}}/app/{{$.Application.Key}}/{{.Key}}/" class="w3-bar-item w3-button w3-padding {{if $.Endpoint}}{{if eq .Key $.Endpoint.Key}}w3-blue{{end}}{{end}}"><i class="fa fa-link"></i> {{.Name}}</a></div>
       {{end}}
       {{end}}{{end}}
       </div>

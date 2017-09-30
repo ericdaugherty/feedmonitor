@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -81,9 +83,14 @@ type ValidatorConfig struct {
 
 // Application defines a high level App, or set of feeds, to test
 type Application struct {
-	Key       string
-	Name      string
-	Endpoints []*Endpoint
+	Key          string
+	Name         string
+	FileName     string
+	LastModified time.Time
+	cancel       chan (bool)
+	shutdown     bool
+	rwMu         *sync.RWMutex
+	Endpoints    []*Endpoint
 }
 
 // Endpoint defines an endpoint (which can be dynamic) to check.
@@ -228,7 +235,12 @@ func (c *Configuration) initializeApplications() {
 
 	for i, file := range files {
 		log.Infof("Loading Appplication Configuration file: %v", file)
-		apps[i] = c.initializeApplication(file)
+		app := c.initializeApplication(file)
+		if app == nil {
+			log.Errorf("Unable to load configuration from file %v. See previous error.", file)
+		} else {
+			apps[i] = app
+		}
 	}
 
 	applications = apps
@@ -239,14 +251,21 @@ func (c *Configuration) initializeApplication(file string) *Application {
 	var a = &ApplicationConfig{}
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Fatalf("Unable to load application configuration file: %v - %v", file, err)
+		log.Errorf("Unable to load application configuration file: %v - %v", file, err)
+		return nil
 	}
 	err = yaml.UnmarshalStrict(b, a)
 	if err != nil {
-		log.Fatalf("Unable to parse application configuration file: %v - %v", file, err)
+		log.Errorf("Unable to parse application configuration file: %v - %v", file, err)
+		return nil
 	}
 
-	app := &Application{Key: a.Key, Name: a.Name}
+	app := &Application{Key: a.Key, Name: a.Name, FileName: file, cancel: make(chan bool), rwMu: &sync.RWMutex{}}
+
+	stat, err := os.Stat(file)
+	if err == nil {
+		app.LastModified = stat.ModTime()
+	}
 
 	// Create and initialize the validators needed in the Endpoints.
 	notifiers := make(map[string]Notifier)
@@ -254,7 +273,8 @@ func (c *Configuration) initializeApplication(file string) *Application {
 	for _, e := range a.Notifiers {
 		n, ok := c.initializeNotifier(e.Type)
 		if !ok {
-			log.Fatalf("Unknown Notifier type %v", e.Type)
+			log.Errorf("Unknown Notifier type %v", e.Type)
+			return nil
 		}
 		n.initialize(e.Name, e.Config)
 		notifiers[e.Key] = n
@@ -269,7 +289,8 @@ func (c *Configuration) initializeApplication(file string) *Application {
 	for _, e := range a.Validators {
 		v, ok := c.initializeValidator(e.Type)
 		if !ok {
-			log.Fatalf("Unknown Validator type %v", e.Type)
+			log.Errorf("Unknown Validator type %v", e.Type)
+			return nil
 		}
 		v.initialize(e.Name, e.Config)
 		validators[e.Key] = v
@@ -307,7 +328,8 @@ func (c *Configuration) initializeApplication(file string) *Application {
 		for i, n1 := range e.Notifiers {
 			not, ok := notifiers[n1]
 			if !ok {
-				log.Fatalf("Unable to find Notifier %v for Endpoint %v (%v) in app %v", n1, e.Name, e.Key, a.Name)
+				log.Errorf("Unable to find Notifier %v for Endpoint %v (%v) in app %v", n1, e.Name, e.Key, a.Name)
+				return nil
 			}
 			n[i+indexOffset] = not
 		}
@@ -321,7 +343,8 @@ func (c *Configuration) initializeApplication(file string) *Application {
 		for i, v1 := range e.Validators {
 			val, ok := validators[v1]
 			if !ok {
-				log.Fatalf("Unable to find Validator %v for Endpoint %v (%v) in app %v", v1, e.Name, e.Key, a.Name)
+				log.Errorf("Unable to find Validator %v for Endpoint %v (%v) in app %v", v1, e.Name, e.Key, a.Name)
+				return nil
 			}
 			v[i+indexOffset] = val
 		}
@@ -332,10 +355,11 @@ func (c *Configuration) initializeApplication(file string) *Application {
 	app.Endpoints = eps
 
 	return app
-
 }
 
 func (c *Configuration) getApplication(key string) *Application {
+	applicationsRWMu.RLock()
+	defer applicationsRWMu.RUnlock()
 	for _, v := range applications {
 		if strings.EqualFold(v.Key, key) {
 			return v
@@ -345,12 +369,73 @@ func (c *Configuration) getApplication(key string) *Application {
 }
 
 func (a *Application) getEndpoint(key string) *Endpoint {
+	a.rwMu.RLock()
+	defer a.rwMu.RUnlock()
 	for _, v := range a.Endpoints {
 		if strings.EqualFold(v.Key, key) {
 			return v
 		}
 	}
 	return nil
+}
+
+func (a *Application) startFeedMonitor(wg *sync.WaitGroup) {
+
+	log := log.WithFields(logrus.Fields{
+		"module": "feedmonitor",
+		"app":    a.Key,
+	})
+
+	ticker := time.NewTicker(1 * time.Second)
+
+	go func() {
+		log.Debug("Started Feed Checker.")
+
+		wg.Add(1)
+		defer wg.Done()
+
+		var data = make(map[string]interface{})
+		for {
+			select {
+			case <-ticker.C:
+				for _, e := range a.Endpoints {
+					a.rwMu.RLock()
+					stop := a.shutdown
+					a.rwMu.RUnlock()
+					if stop {
+						log.Debug("Shutting down Feed Checker.")
+						return
+					}
+					if e.shouldCheckNow() {
+						e.scheduleNextCheck()
+						a.rwMu.Lock()
+						if e.Dynamic {
+							urls, err := e.parseURLs(data)
+							if err != nil {
+								log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
+							}
+							for _, url := range urls {
+								fetchEndpoint(a, e, url)
+							}
+						} else {
+							data[e.Key], _ = fetchEndpoint(a, e, e.URL)
+						}
+						a.rwMu.Unlock()
+					}
+				}
+			case <-a.cancel:
+				log.Debug("Shutting down Feed Checker.")
+				return
+			}
+		}
+	}()
+}
+
+func (a *Application) stopFeedMonitor() {
+	a.rwMu.Lock()
+	a.shutdown = true
+	close(a.cancel)
+	a.rwMu.Unlock()
 }
 
 func (e *Endpoint) scheduleNextCheck() {
