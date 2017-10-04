@@ -48,12 +48,12 @@ func main() {
 
 	log.Info("FeedMonitor Starting...")
 
-	configuration.initializeApplications()
-
 	err := StartDatabase("feedmon.db", log)
 	if err != nil {
 		log.Fatalf("Unable to launch FeedMonitor.  Error initializing the database. %v", err.Error())
 	}
+
+	configuration.initializeApplications()
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)

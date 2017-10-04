@@ -320,6 +320,14 @@ func (c *Configuration) initializeApplication(file string) *Application {
 			nextCheckTime:    time.Now(),
 		}
 
+		if !ep.Dynamic {
+			epr, _ := GetLastEndpointResult(a.Key, e.Key, e.URL)
+			if epr != nil {
+				ep.lastCheckTime = epr.CheckTime
+				ep.nextCheckTime = epr.CheckTime.Add(time.Duration(ep.CheckIntervalMin) * time.Minute)
+			}
+		}
+
 		n := make([]Notifier, len(e.Notifiers)+len(defaultNotifiers))
 		// Add Default Notifiers
 		copy(n, defaultNotifiers)
