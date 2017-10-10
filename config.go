@@ -57,6 +57,7 @@ type EndpointConfig struct {
 	URL           string
 	Method        string
 	RequestBody   string
+	Headers       map[string]string
 	Dynamic       bool
 	CheckInterval int
 	Notifiers     []string
@@ -100,6 +101,7 @@ type Endpoint struct {
 	URL               string
 	Method            string
 	RequestBody       string
+	Headers           map[string]string
 	Dynamic           bool
 	CheckIntervalMin  int
 	Notifiers         []Notifier
@@ -231,15 +233,15 @@ func (c *Configuration) initializeApplications() {
 		log.Fatalf("Error parsing configuration files. %v", err)
 	}
 
-	apps := make([]*Application, len(files))
+	var apps []*Application
 
-	for i, file := range files {
+	for _, file := range files {
 		log.Infof("Loading Appplication Configuration file: %v", file)
 		app := c.initializeApplication(file)
 		if app == nil {
 			log.Errorf("Unable to load configuration from file %v. See previous error.", file)
 		} else {
-			apps[i] = app
+			apps = append(apps, app)
 		}
 	}
 
@@ -314,6 +316,7 @@ func (c *Configuration) initializeApplication(file string) *Application {
 			URL:              e.URL,
 			Method:           method,
 			RequestBody:      e.RequestBody,
+			Headers:          e.Headers,
 			Dynamic:          e.Dynamic,
 			CheckIntervalMin: e.CheckInterval,
 			lastCheckTime:    time.Unix(0, 0),
@@ -323,8 +326,10 @@ func (c *Configuration) initializeApplication(file string) *Application {
 		if !ep.Dynamic {
 			epr, _ := GetLastEndpointResult(a.Key, e.Key, e.URL)
 			if epr != nil {
-				ep.lastCheckTime = epr.CheckTime
-				ep.nextCheckTime = epr.CheckTime.Add(time.Duration(ep.CheckIntervalMin) * time.Minute)
+				if epr.CheckTime.Add(time.Duration(ep.CheckIntervalMin) * time.Minute).After(time.Now()) {
+					ep.lastCheckTime = epr.CheckTime
+					ep.nextCheckTime = epr.CheckTime.Add(time.Duration(ep.CheckIntervalMin) * time.Minute)
+				}
 			}
 		}
 
@@ -423,10 +428,10 @@ func (a *Application) startFeedMonitor(wg *sync.WaitGroup) {
 								log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
 							}
 							for _, url := range urls {
-								fetchEndpoint(a, e, url)
+								fetchEndpoint(a, e, url, data)
 							}
 						} else {
-							data[e.Key], _ = fetchEndpoint(a, e, e.URL)
+							data[e.Key], _ = fetchEndpoint(a, e, e.URL, data)
 						}
 						a.rwMu.Unlock()
 					}

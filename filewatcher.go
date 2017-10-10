@@ -50,7 +50,7 @@ func reloadConfigFile(event fsnotify.Event) {
 			}
 
 			if stat.ModTime().Equal(app.LastModified) {
-				log.Info("Ignoring Chmod notification. Last load time and last modified times are equal. %v", app.LastModified)
+				log.Infof("Ignoring Chmod notification. Last load time and last modified times are equal. %v", app.LastModified)
 				applicationsRWMu.Unlock()
 				return
 			}
