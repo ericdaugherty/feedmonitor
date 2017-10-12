@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func fetchEndpoint(app *Application, e *Endpoint, url string, data map[string]interface{}) (interface{}, error) {
+func fetchEndpoint(app *Application, e *Endpoint, url string, data map[string]interface{}) (map[string]interface{}, error) {
 
 	log := log.WithFields(logrus.Fields{"module": "fetcher", "app": app.Key, "endpoint": e.Key, "url": url})
 
@@ -20,25 +20,29 @@ func fetchEndpoint(app *Application, e *Endpoint, url string, data map[string]in
 	epr := &EndpointResult{AppKey: app.Key, EndpointKey: e.Key, URL: url}
 
 	client := &http.Client{}
+	if e.IgnoreRedirects {
+		client = &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+	}
 
-	req, err := http.NewRequest(e.Method, url, strings.NewReader(e.RequestBody))
+	req, err := http.NewRequest(e.Method, url, strings.NewReader(executeTemplate(e.RequestBody, data)))
 	if err != nil {
 		log.Errorf("Error creating new HTTP Request: %v", err)
 		return nil, err
 	}
 
 	for k, v := range e.Headers {
-		req.Header.Add(parseRequestHeader(k, data), parseRequestHeader(v, data))
+		req.Header.Add(executeTemplate(k, data), executeTemplate(v, data))
 	}
-
-	// reqdata, err := httputil.DumpRequestOut(req, true)
 
 	epr.CheckTime = time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		webLog.Warnf("Error Performing Endpoint Query. %v", err)
 	}
-	// log.Errorf("Request: %v\r\nError: %v", string(reqdata), err)
 	epr.Duration = time.Now().Sub(epr.CheckTime)
 
 	if err != nil {
@@ -66,6 +70,7 @@ func fetchEndpoint(app *Application, e *Endpoint, url string, data map[string]in
 	log.Infof("Fetched result in %v with status %d and %d bytes.", epr.Duration, epr.Status, epr.Size)
 
 	resultData := make(map[string]interface{})
+	resultData["headers"] = resp.Header
 	vresults := []*ValidationResult{}
 
 	valid := true
@@ -93,21 +98,33 @@ func fetchEndpoint(app *Application, e *Endpoint, url string, data map[string]in
 		e.CurrentStatus = StatusFail
 	}
 
-	return resultData["data"], nil
+	return resultData, nil
 }
 
-func parseRequestHeader(value string, data map[string]interface{}) string {
-	t := template.New("Header Template")
-	t, err := t.Parse(value)
+func executeTemplate(value string, data map[string]interface{}) string {
+	funcMap := template.FuncMap{
+		"TrimPrefix": strings.TrimPrefix,
+		"TrimSuffix": strings.TrimSuffix,
+		"Split":      strings.Split,
+		"TrimAt": func(s string, sep string) string {
+			i := strings.Index(s, sep)
+			if i >= 0 {
+				return s[:i]
+			}
+			return s
+		},
+	}
+
+	t, err := template.New("").Funcs(funcMap).Parse(value)
 	if err != nil {
-		log.Warnf("Unable to parse Header %v. Error: %v", value, err)
+		log.Warnf("Unable to parse template %v. Error: %v", value, err)
 		return value
 	}
 
 	buf := new(bytes.Buffer)
 	err = t.Execute(buf, data)
 	if err != nil {
-		log.Warnf("Unable to parse Header %v. Error: %v", value, err)
+		log.Warnf("Unable to execute template %v. Error: %v", value, err)
 		return value
 	}
 	return buf.String()

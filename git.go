@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha1"
 	"encoding/base32"
+	"encoding/hex"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -35,6 +37,11 @@ type GitRepo struct {
 func GetGitRepo(appKey string, endpointKey string, url string) (*GitRepo, error) {
 
 	encodedURL := base32.StdEncoding.EncodeToString([]byte(url))
+	if len(encodedURL) > 255 {
+		hash := sha1.Sum([]byte(encodedURL))
+		encodedURL = hex.EncodeToString(hash[:])
+	}
+
 	dir := filepath.Join(configuration.GitRoot, appKey, endpointKey, encodedURL)
 
 	reposMu.Lock()

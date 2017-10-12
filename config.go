@@ -52,16 +52,17 @@ type ApplicationConfig struct {
 
 // EndpointConfig represents configuration data loaded from the configuration file for a specific application
 type EndpointConfig struct {
-	Key           string
-	Name          string
-	URL           string
-	Method        string
-	RequestBody   string
-	Headers       map[string]string
-	Dynamic       bool
-	CheckInterval int
-	Notifiers     []string
-	Validators    []string
+	Key             string
+	Name            string
+	URL             string
+	Method          string
+	RequestBody     string
+	Headers         map[string]string
+	Dynamic         bool
+	IgnoreRedirects bool
+	CheckInterval   int
+	Notifiers       []string
+	Validators      []string
 }
 
 // NotifierConfig represents the config data for a Notification channel.
@@ -103,6 +104,7 @@ type Endpoint struct {
 	RequestBody       string
 	Headers           map[string]string
 	Dynamic           bool
+	IgnoreRedirects   bool
 	CheckIntervalMin  int
 	Notifiers         []Notifier
 	Validators        []Validator
@@ -318,6 +320,7 @@ func (c *Configuration) initializeApplication(file string) *Application {
 			RequestBody:      e.RequestBody,
 			Headers:          e.Headers,
 			Dynamic:          e.Dynamic,
+			IgnoreRedirects:  e.IgnoreRedirects,
 			CheckIntervalMin: e.CheckInterval,
 			lastCheckTime:    time.Unix(0, 0),
 			nextCheckTime:    time.Now(),
@@ -428,7 +431,7 @@ func (a *Application) startFeedMonitor(wg *sync.WaitGroup) {
 								log.Errorf("Error parsing URL: %v Error: %v", e.URL, err.Error())
 							}
 							for _, url := range urls {
-								fetchEndpoint(a, e, url, data)
+								data[e.Key], _ = fetchEndpoint(a, e, url, data)
 							}
 						} else {
 							data[e.Key], _ = fetchEndpoint(a, e, e.URL, data)
