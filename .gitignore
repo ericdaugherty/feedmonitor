@@ -7,4 +7,5 @@ prodcfg
 TODO
 Makefile
 cfg
+!cfg/example.yamls
 repos
