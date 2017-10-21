@@ -29,7 +29,7 @@
                 {{else}}
                 <td><i class="fa fa-circle" style="color: orange"></i> Unknown</td>
                 {{end}}
-                {{if .Dynamic}}<td>{{.URL}}</td>{{else}}<td><a href="{{.URL}}">{{.URL}}</a></td>{{end}}
+                {{if .Dynamic}}<td style="word-break: break-word;">{{.URL}}</td>{{else}}<td style="word-wrap:break-word"><a href="{{.URL}}">{{.URL}}</a></td>{{end}}
 
             </tr>
         {{end}}

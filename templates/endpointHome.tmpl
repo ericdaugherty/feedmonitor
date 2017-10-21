@@ -42,7 +42,7 @@
                     </tr>
                     <tr>
                         <td>URL</td>
-                        <td>{{.Endpoint.URL}}</td>
+                        <td style="word-break: break-word;">{{.Endpoint.URL}}</td>
                     </tr>
                 </table>
             </div>
@@ -76,7 +76,7 @@
 
     {{ range .URLS }}
     <div class="w3-container">
-        <h5>URL: <a href="{{.}}">{{.}}</a></h5>
+        <h5 style="word-break: break-word;">URL: <a href="{{.}}">{{.}}</a></h5>
         <div><a href="./performance?date=today&feed={{.}}">View Performance Log</a></div>
         <div><a href="./resultsdiff?feed={{.}}">View Recent Diffs</a></div>
         <div><a href="./resultsinvalid?feed={{.}}">View Recent Validation Failures</a></div>        
