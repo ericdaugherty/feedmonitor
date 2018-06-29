@@ -207,6 +207,8 @@ func (c *Configuration) initializeNotifier(vtype string) (Notifier, bool) {
 		return &StandardErrorNotifier{}, true
 	case "hipchat":
 		return &HipChatNotifer{}, true
+	case "teams":
+		return &TeamsNotifer{}, true
 	default:
 		return nil, false
 	}

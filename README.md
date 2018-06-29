@@ -55,7 +55,7 @@ Validators can be run on each feed. There are several useful validators provided
 
 ## Notifiers
 
-StdErr and HipChat notifiers are provided by default. The interace is simple and additional notifiers can be added easily.
+StdErr HipChat, and MS Teams notifiers are provided by default. The interace is simple and additional notifiers can be added easily.
 
 ## Web Interface
 
